@@ -22,17 +22,17 @@
 // (SPDX short identifier: BSD-1-Clause)
 
 
-module	dpram_32x32
+module	dpram_32x8
 (
 	input	[ 4:0]	raddr,
-	output	[31:0]	dataout,
+	output	[ 7:0]	dataout,
 	input	[ 4:0]	waddr,
-	input	[31:0]	datain,
+	input	[ 7:0]	datain,
 	input		we,
 	input		clk
 );
 
-	reg	[31:0]	memblock[31:0];
+	reg	[ 7:0]	memblock[31:0];
 	reg		dataout;
 	always @(posedge clk)
 	begin

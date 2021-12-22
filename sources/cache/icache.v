@@ -46,7 +46,8 @@ module icache(
 	reg	[31:0]	mem_rdaddr;
 	reg		mem_rdreq;
 
-	reg	[15:0]	burstcnt;
+	reg	[15:0]	cnt_burst;
+	reg	[15:0]	cnt_fill;
 	parameter	[1:0]	MSR_INIT=2'b00,
 				MSR_FILL=2'b01,
 				MSR_VALID=2'b11;
@@ -74,7 +75,8 @@ module icache(
 			msr		<= MSR_INIT;
 			icache_valid	<=1'b0;
 			mem_rdreq	<=1'b0;
-			burstcnt	<=16'd0;
+			cnt_burst	<=16'd0;
+			cnt_fill	<=16'd0;
 			addrmsb		<=25'd0;
 			r_mem_dataout	<=32'b0;
 			r_mem_datavalid	<=1'b0;
@@ -87,7 +89,8 @@ module icache(
 					if (icache_rdreq)
 					begin
 						addrmsb		<=icache_rdaddr[31:7];
-						burstcnt	<=16'd0;
+						cnt_burst	<=16'd0;
+						cnt_fill	<=16'd0;
 						mem_waddr	<=5'd31;
 						msr		<=MSR_FILL;
 						mem_rdaddr	<={icache_rdaddr[31:2],2'b00};
@@ -96,23 +99,23 @@ module icache(
 				end
 				MSR_FILL: begin
 					mem_rdaddr	<={addrmsb,mem_waddr,2'b00};
-					if (burstcnt==16'd32)
+					if (cnt_fill==16'd32)
 					begin
 						r_mem_datavalid	<=1'b0;
 						msr		<=MSR_VALID;
 						mem_rdreq	<=1'b0;
 						icache_valid	<=1'b1;
-					end else if (burstcnt==mem_burstlen)
+					end else if (cnt_burst==mem_burstlen)
 					begin
 						r_mem_datavalid	<=1'b0;
-						burstcnt	<=16'd0;
+						cnt_burst	<=16'd0;
 						mem_rdreq	<=1'b1;
-						mem_rdaddr	<={icache_rdaddr[31:7],mem_waddr,2'b00};
 					end else if (mem_datavalid)
 					begin
 						r_mem_datavalid	<=1'b1;
 						mem_rdreq	<=1'b0;
-						burstcnt	<=burstcnt+16'd1;
+						cnt_burst	<=cnt_burst+16'd1;
+						cnt_fill	<=cnt_fill+16'd1;
 						mem_waddr	<=mem_waddr+5'd1;
 					end else begin
 						r_mem_datavalid	<=1'b0;
@@ -128,7 +131,8 @@ module icache(
 						end else begin
 							icache_valid	<=1'b0;
 							addrmsb		<=icache_rdaddr[31:7];
-							burstcnt	<=16'd0;
+							cnt_burst	<=16'd0;
+							cnt_fill	<=16'd0;
 							mem_waddr	<=5'd31;
 							msr		<=MSR_FILL;
 							mem_rdaddr	<={icache_rdaddr[31:2],2'b00};
