@@ -32,16 +32,17 @@ module	dpram_32x32
 	input		clk
 );
 
-	reg	[31:0]	memblock[4:0];
+	reg	[31:0]	memblock[31:0];
 	reg		dataout;
 	always @(posedge clk)
 	begin
 		if (we)
 		begin
 			memblock[waddr]<=datain;
-		end else begin
-			dataout<=memblock[raddr];
+			$display("                  IN %x  %x",waddr,datain);
 		end
+		dataout<=memblock[raddr];
+		$display("OUT %x %x",raddr,memblock[raddr]);
 	end
 
 endmodule

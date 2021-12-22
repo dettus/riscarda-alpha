@@ -34,6 +34,7 @@ module icache(
 	// connection to the main memory controller
 	output	[31:0]	mem_rdaddr,
 	output		mem_rdreq,
+	input	[15:0]	mem_burstlen,
 	input	[31:0]	mem_dataout,
 	input		mem_datavalid,
 
@@ -44,98 +45,100 @@ module icache(
 	reg		icache_valid;
 	reg	[31:0]	mem_rdaddr;
 	reg		mem_rdreq;
-	reg	[ 4:0]	r_wraddr;
-	reg	[31:0]	r_mem_dataout;
-	reg		r_mem_datavalid;
-	reg		r_datavalid;
+
+	reg	[15:0]	burstcnt;
+	parameter	[1:0]	MSR_INIT=2'b00,
+				MSR_FILL=2'b01,
+				MSR_VALID=2'b11;
 	reg	[ 1:0]	msr;
-
-	reg	[26:0]	addr_msb;
-	reg		r_icache_rdreq;
-
-	localparam [1:0] 
-		MSR_INIT=2'b00,
-		MSR_VALID=2'b01,
-		MSR_REQUEST=2'b10,
-		MSR_FILL=2'b11;
+	reg	[31:0]	r_mem_dataout;
+	reg	[ 4:0]	mem_waddr;
+	reg		r_mem_datavalid;
+	reg	[24:0]	addrmsb;
 
 
-	dpram_32x32	ICACHERAM0(
+	dpram_32x32	CACHEMEM0
+	(
 		.raddr		(icache_rdaddr[6:2]),
 		.dataout	(icache_dataout),
-		.waddr		(r_wraddr),
+		.waddr		(mem_waddr),
 		.datain		(r_mem_dataout),
 		.we		(r_mem_datavalid),
 		.clk		(clk)
-		
 	);
 
 	always @(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
 		begin
+			msr		<= MSR_INIT;
 			icache_valid	<=1'b0;
-			mem_rdaddr	<=32'b0;
 			mem_rdreq	<=1'b0;
-			msr		<=MSR_INIT;
-			r_wraddr	<=5'd0;
+			burstcnt	<=16'd0;
+			addrmsb		<=25'd0;
 			r_mem_dataout	<=32'b0;
 			r_mem_datavalid	<=1'b0;
-			addr_msb	<=27'd0;
-			r_icache_rdreq	<=1'b0;
+			mem_waddr	<=5'd0;
 		end else begin
-			case (msr)
+			r_mem_dataout	<=mem_dataout;
+			case(msr)
 				MSR_INIT: begin
-					r_datavalid	<=1'b0;
+					icache_valid	<=1'b0;
 					if (icache_rdreq)
 					begin
-						msr		<=MSR_REQUEST;
-						addr_msb	<=icache_rdaddr[31:5];
-						mem_rdaddr	<=icache_rdaddr;
-						mem_rdreq	<=1'b1;
-						r_icache_rdreq	<=1'b1;
-					end
-				end
-				MSR_REQUEST: begin
-					r_mem_datavalid	<=mem_datavalid;
-					r_mem_dataout	<=mem_dataout;
-					mem_rdreq	<=1'b0;
-					r_wraddr		<=5'd0;
-					if (mem_datavalid)
-					begin
+						addrmsb		<=icache_rdaddr[31:7];
+						burstcnt	<=16'd0;
+						mem_waddr	<=5'd31;
 						msr		<=MSR_FILL;
+						mem_rdaddr	<={icache_rdaddr[31:2],2'b00};
+						mem_rdreq	<=1'b1;
 					end
 				end
 				MSR_FILL: begin
-					r_mem_datavalid	<=mem_datavalid;
-					r_mem_dataout	<=mem_dataout;
-					if (mem_datavalid)
+					mem_rdaddr	<={addrmsb,mem_waddr,2'b00};
+					if (burstcnt==16'd32)
 					begin
-						r_wraddr<=r_wraddr+5'd1;
-						if (r_wraddr==5'd31)
-						begin
-							msr	<=MSR_VALID;
-						end
+						r_mem_datavalid	<=1'b0;
+						msr		<=MSR_VALID;
+						mem_rdreq	<=1'b0;
+						icache_valid	<=1'b1;
+					end else if (burstcnt==mem_burstlen)
+					begin
+						r_mem_datavalid	<=1'b0;
+						burstcnt	<=16'd0;
+						mem_rdreq	<=1'b1;
+						mem_rdaddr	<={icache_rdaddr[31:7],mem_waddr,2'b00};
+					end else if (mem_datavalid)
+					begin
+						r_mem_datavalid	<=1'b1;
+						mem_rdreq	<=1'b0;
+						burstcnt	<=burstcnt+16'd1;
+						mem_waddr	<=mem_waddr+5'd1;
+					end else begin
+						r_mem_datavalid	<=1'b0;
+						mem_rdreq	<=1'b0;
 					end
 				end
 				MSR_VALID: begin
-					r_mem_datavalid	<=1'b0;
-					if (r_icache_rdreq | icache_rdreq)
+					if (icache_rdreq)
 					begin
-						if (addr_msb==icache_rdaddr[31:5])
+						if (icache_rdaddr[31:7]==addrmsb)
 						begin
-							r_icache_rdreq	<=1'b0;
-							r_datavalid	<=1'b1;
+							icache_valid	<=1'b1;
 						end else begin
-							msr		<=MSR_REQUEST;
-							addr_msb	<=icache_rdaddr[31:5];
-							mem_rdaddr	<=icache_rdaddr;
+							icache_valid	<=1'b0;
+							addrmsb		<=icache_rdaddr[31:7];
+							burstcnt	<=16'd0;
+							mem_waddr	<=5'd31;
+							msr		<=MSR_FILL;
+							mem_rdaddr	<={icache_rdaddr[31:2],2'b00};
 							mem_rdreq	<=1'b1;
-							r_icache_rdreq	<=1'b1;
-							r_datavalid	<=1'b0;
 						end
+					end else begin
+						icache_valid	<=1'b0;
 					end
 				end
+
 			endcase
 		end
 	end

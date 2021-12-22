@@ -89,6 +89,7 @@ module main();
 		.mem_rdreq		(mem_rdreq),
 		.mem_dataout		(mem_dataout),
 		.mem_datavalid		(mem_datavalid),
+		.mem_burstlen		(16'd32),
 		.clk			(clk),
 		.reset_n		(reset_n)
 	);
@@ -111,7 +112,7 @@ module main();
 		#0	reset_n<=1'b1;clk<=1'b0;icache_rdreq<=1'b0;
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
-		#8	$display("simulation started");
+		#3	$display("simulation started");
 		
 		#100	icache_rdaddr<=32'h00000000;icache_rdreq<=1'b1;
 		#10	icache_rdreq<=1'b0;
