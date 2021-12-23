@@ -36,6 +36,9 @@ module	dcache_line(
 	input	[`ADDRBITS-1:0]		dcache_addr;
 	input				dcache_rdreq;
 	input				dcache_wrreq;
+	input	[`DATABITS-1:0]		dcache_in;
+	output	[`DATABITS-1:0]		line_out;
+	output				line_valid;
 	
 
 	output	[`ADDRBITS-1:0]		mem_addr;
@@ -60,6 +63,7 @@ module	dcache_line(
 	reg				miss;
 	reg				v_miss;
 	reg	[`ADDRMSBBITS:0]	addrmsb;
+	reg	[`ADDRMSBBITS:0]	addrmsb2;
 	reg	[1:0]			msr;
 	localparam	[1:0]	MSR_INIT=2'b00,MSR_FILL=2'b01,MSR_PREVALID=2'b10;
 
@@ -74,6 +78,38 @@ module	dcache_line(
 
 	reg	[15:0]			cnt_fill;
 	reg	[15:0]			cnt_burst;
+
+	reg	[`CACHEADDRBITS-1:0]	addr_flush;
+	reg	[`CACHEADDRBITS-1:0]	dpram_waddr;
+	reg	[`DATABITS-1:0]		dpram_datain;
+	reg				dpram_we;
+
+	reg	[`DATABITS-1:0]		line_out;
+	reg				line_valid;
+
+	reg				v_line_valid;
+	reg				v_miss;
+	reg				v_dpram_we;
+	reg				r_rdreq;
+
+	dpram_32x32	DPRAM0(
+		.rdaddr			(dpram_rdaddr),
+		.dataout		(line_out),
+		.waddr			(dpram_waddr),
+		.datain			(dpram_datain),
+		.wr			(dpram_we),
+		.clk			(clk)
+	);
+
+	always	@(msr,dcache_addr[`CACHEADDRBITS+2-1:2])
+	begin
+		if (msr==MSR_VALID)
+		begin
+			dpram_rdaddr<=dcache_addr[`CACHEADDRBITS+2-1:2];
+		end else begin
+			dpram_rdaddr<=addr_flush;
+		end
+	end
 
 
 
@@ -90,16 +126,20 @@ module	dcache_line(
 			cnt_fill	<=16'd0'
 		end else begin
 			r_dcache_addr	<=dcache_addr;
-
+			v_dpram_we	=1'b0;
 			v_ttl		=ttl;
 			v_mem_addr	=`ADDRBITS'h0;
 			v_mem_rdreq	=1'b0;
 			v_miss		=1'b0;
+			v_line_valid	=1'b0;
+
+			r_wrreq		<=wrreq;
 			case (msr)
 				MSR_INIT: begin
 					v_miss	=(rdreq | wrreq);
 					if (fill_req)
 					begin
+						addrmsb		<=dcache_addr[`ADDRBITS:`CACHEADDRBITS+2];
 						msr		<= MSR_FILL;
 						v_mem_addr	={dcache_addr[`ADDRBITS-1:2,2'b00};
 						v_mem_rdreq	=1'b1;
@@ -133,6 +173,51 @@ module	dcache_line(
 					// in case miss: miss
 					// in case fill_req & dirty: --> MSR_FLUSH
 					// in case fill_req & !dirty:--> MSR_FILL
+	
+					v_miss=1'b0;
+					if (rdreq)
+					begin
+						if (dcache_addr[`ADDRBITS:`CACHEADDRBITS+2]==addrmsb)
+						begin
+							v_line_valid	=1'b1;
+						end else begin
+							v_miss		=1'b1;
+							if (v_ttl!=`TTLBITS'd0)
+							begin
+								v_ttl	=v_ttl-`TTLBITS'd1;
+							end
+						end
+					end
+					if (wrreq)
+					begin
+						dirty	<=1'b1;
+						if (dcache_addr[`ADDRBITS:`CACHEADDRBITS+2]==addrmsb)
+						begin
+							v_line_valid	=1'b1;
+							v_dpram_we	=1'b1;
+							dpram_datain	<=dache_in;
+							dpram_waddr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
+						end else begin
+							v_miss		=1'b1;
+							if (v_ttl!=`TTLBITS'd0)
+							begin
+								v_ttl	=v_ttl-`TTLBITS'd1;
+							end
+						end
+						
+					end
+					if (fill_req)
+					begin
+						addrmsb		<=dcache_addr[`ADDRBITS:`CACHEADDRBITS+2];
+						addrmsb2	<=addrmsb;
+						cnt_fill	<=16'd0;
+						cnt_burst	<=16'd0;
+						addr_flush	<=`CACHEADDRBITS'd0;
+						msr		<=dirty? MSR_FLUSH:MSR_FILL;
+					end
+							
+					line_valid	<=v_line_valid;
+					miss		<=v_miss;
 				end
 				MSR_FLUSH: begin
 					// flush out
@@ -143,10 +228,11 @@ module	dcache_line(
 
 			ttl		<=v_ttl;
 			miss		<=v_miss;
+			line_valid	<=v_line_valid;
 			mem_addr	<=v_mem_addr;
 			mem_rdreq	<=v_mem_rdreq;
+			dpram_we	<=v_dpram_we;
 		end
 	end
-
 endmodule
 
