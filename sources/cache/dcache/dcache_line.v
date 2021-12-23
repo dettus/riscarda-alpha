@@ -84,13 +84,16 @@ module	dcache_line(
 	reg	[`ADDRMSBBITS-1:0]	addrmsb2;
 
 	reg				dirty;
+	reg				write_request;
+	reg	[`CACHEADDRBITS-1:0]	write_addr;
+	reg	[`DATABITS-1:0]		write_value;
 
 
-	localparam	[2:0]	MSR_INIT=3'b000,MSR_FILL=3'b001,MSR_VALID=3'b010,MSR_FLUSH=3'b011;
+	localparam	[2:0]	MSR_INIT=3'b000,MSR_FILL=3'b001,MSR_VALID=3'b010,MSR_FLUSH=3'b011,MSR_BREATHER=3'b100;
 
 	always @(dpram_flushaddr,msr,dcache_addr[`CACHEADDRBITS+1-1:2])
 	begin
-		dpram_raddr<=(msr==MSR_FLUSH)?dpram_flushaddr:dcache_addr[`CACHEADDRBITS+1-1:2];
+		dpram_raddr<=(msr==MSR_FLUSH)?dpram_flushaddr:dcache_addr[`CACHEADDRBITS+2:2];	// TODO: why not +2-1?
 	end
 
 	dpram_32x32	DPRAM0(
@@ -120,14 +123,23 @@ module	dcache_line(
 			cnt_fill	<=16'd0;
 			addrmsb1	<=`ADDRMSBBITS'b0;
 			addrmsb2	<=`ADDRMSBBITS'b0;
+			write_request	<=1'b0;
+			write_addr	<=`CACHEADDRBITS'd0;
+			write_value	<=`DATABITS'h0;
 		end else begin
 			case (msr)
 				MSR_INIT:	begin
 					line_miss	<=1'b1;
+					if (dcache_rdreq | dcache_wrreq)
+					begin
+						write_request	<=dcache_wrreq;
+						write_value	<=dcache_datain;
+						write_addr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
+					end
 					if (line_fill)
 					begin
 						addrmsb2	<=addrmsb1;
-						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1];
+						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2];
 						dpram_waddr	<=`CACHEADDRBITS'd0;
 						cnt_fill	<=16'd0;
 						cnt_burst	<=mem_burstlen;
@@ -138,9 +150,10 @@ module	dcache_line(
 					line_miss	<=1'b0;
 					if (cnt_fill==16'd`CACHEWORDS)
 					begin
-						msr		<=MSR_VALID;
+						msr		<=MSR_BREATHER;
 						dpram_we	<=1'b0;
 						mem_rdreq	<=1'b0;
+						line_valid	<=1'b0;
 					end else if (cnt_burst==mem_burstlen)
 					begin
 						dpram_we	<=1'b0;
@@ -154,25 +167,44 @@ module	dcache_line(
 						cnt_fill	<=cnt_fill+16'd1;
 						dpram_waddr	<=dpram_waddr+`CACHEADDRBITS'd1;
 						dpram_we	<=1'b1;
-						dpram_datain	<=mem_out;
+						if (write_request & (dpram_waddr==write_addr))	// in case the last cache request was a WRITE
+						begin
+							write_request	<=1'b0;
+							dpram_datain	<=write_value;
+						end else begin
+							dpram_datain	<=mem_out;
+						end
 						mem_rdreq	<=1'b0;
 					end else begin
 						mem_rdreq	<=1'b0;
 						dpram_we	<=1'b0;
 					end
 				end
+				MSR_BREATHER: begin
+					line_valid	<=1'b0;
+					msr		<=MSR_VALID;
+
+				end
 				MSR_VALID: begin
 					v_line_valid	=1'b0;
 					v_dpram_we	=1'b0;
 					v_dpram_waddr	=dpram_waddr;	
 				
-					line_miss<= (dcache_rdreq|dcache_wrreq)&(dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1);
+					if ((dcache_rdreq|dcache_wrreq)&(dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2]!=addrmsb1))	// TODO: really? or +2+1??
+					begin
+						line_miss	<=1'b1;
+						write_request	<=dcache_wrreq;
+						write_value	<=dcache_datain;
+						write_addr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
+					end else begin
+						line_miss	<=1'b0;
+					end
 
-					if (dcache_rdreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1))
+					if (dcache_rdreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2]==addrmsb1))	// TODO: really? or +2+1??
 					begin
 						v_line_valid	=1'b1;
 					end
-					if (dcache_wrreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1))
+					if (dcache_wrreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2]==addrmsb1))	// TODO: really? or +2+1??
 					begin
 						dirty		<=1'b1;
 						v_line_valid	=1'b1;
@@ -184,16 +216,16 @@ module	dcache_line(
 					if (line_fill)
 					begin
 						addrmsb2	<=addrmsb1;
-						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1];
+						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2];
 						v_dpram_waddr	=`CACHEADDRBITS'd0;
 						dpram_flushaddr	<=`CACHEADDRBITS'd0;
 						cnt_fill	<=16'd0;
 						cnt_burst	<=mem_burstlen;
 						msr		<=dirty? MSR_FLUSH:MSR_FILL;
 					end
-					line_valid	=v_line_valid;
-					dpram_we	=v_dpram_we;
-					dpram_waddr	=v_dpram_waddr;
+					line_valid	<=v_line_valid;
+					dpram_we	<=v_dpram_we;
+					dpram_waddr	<=v_dpram_waddr;
 				end
 				MSR_FLUSH: begin
 					line_miss	<=1'b0;
