@@ -29,209 +29,201 @@
 
 `define	CACHEWORDS	32
 `define	CACHEADDRBITS	5
-`define	ADDRMSBBITS	(`ADDRBITS-CACHEADDRBITS-2-1)
+`define	ADDRMSBBITS	(`ADDRBITS-`CACHEADDRBITS-2)
 
 
 module	dcache_line(
-	input	[`ADDRBITS-1:0]		dcache_addr;
-	input				dcache_rdreq;
-	input				dcache_wrreq;
-	input	[`DATABITS-1:0]		dcache_in;
-	output	[`DATABITS-1:0]		line_out;
-	output				line_valid;
+	// connection to the CPU core
+	input	[`ADDRBITS-1:0]	dcache_addr,
+	input	[`DATABITS-1:0]	dcache_datain,
+	input			dcache_rdreq,
+	input			dcache_wrreq,
+	// connection to the controller
+	input			line_fill,
+	output	[`DATABITS-1:0]	line_out,
+	output			line_valid,
+
+
+	// connection to the memory controller
+	input	[`DATABITS-1:0]	mem_out,
+	input	[15:0]		mem_burstlen,
+	input			mem_valid,
+	output	[`ADDRBITS-1:0]	mem_addr,
+	output			mem_rdreq,
+	output			mem_wrreq,
 	
 
-	output	[`ADDRBITS-1:0]		mem_addr;
-	output				mem_rdreq;
-	input	[15:0]			mem_burstlen;
-	input	[`DATABITS-1:0]		mem_dataout;
-	input				mem_valid;
-
-
 	
-
-
-	output	[`TTLBITS-1:0]		ttl;
-	output				miss;
-	input				fill_req;
-
-	input				reset_n;
-	input				clk;
+	input		reset_n,
+	input		clk
 );
-	reg	[`TTLBITS-1:0]		ttl;
-	reg	[`TTLBITS-1:0]		v_ttl;
-	reg				miss;
-	reg				v_miss;
-	reg	[`ADDRMSBBITS:0]	addrmsb;
-	reg	[`ADDRMSBBITS:0]	addrmsb2;
-	reg	[1:0]			msr;
-	localparam	[1:0]	MSR_INIT=2'b00,MSR_FILL=2'b01,MSR_PREVALID=2'b10;
-
-
-	reg				dirty;
-	reg	[`ADDRBITS-1:0]]	r_dcache_addr;
+i	reg	[`DATABITS-1:0]		line_out;
+	reg				line_valid;
+	reg				v_line_valid;
 
 	reg	[`ADDRBITS-1:0]		mem_addr;
-	reg				v_mem_addr;
 	reg				mem_rdreq;
-	reg				v_mem_rdreq;
+	reg				mem_wrreq;
+	
 
-	reg	[15:0]			cnt_fill;
-	reg	[15:0]			cnt_burst;
-
-	reg	[`CACHEADDRBITS-1:0]	addr_flush;
+	reg	[`CACHEADDRBITS-1:0]	dpram_flushaddr;
+	reg	[`CACHEADDRBITS-1:0]	dpram_raddr;
 	reg	[`CACHEADDRBITS-1:0]	dpram_waddr;
+	reg	[`CACHEADDRBITS-1:0]	v_dpram_waddr;
 	reg	[`DATABITS-1:0]		dpram_datain;
 	reg				dpram_we;
-
-	reg	[`DATABITS-1:0]		line_out;
-	reg				line_valid;
-
-	reg				v_line_valid;
-	reg				v_miss;
 	reg				v_dpram_we;
-	reg				r_rdreq;
 
-	dpram_32x32	DPRAM0(
-		.rdaddr			(dpram_rdaddr),
-		.dataout		(line_out),
-		.waddr			(dpram_waddr),
-		.datain			(dpram_datain),
-		.wr			(dpram_we),
-		.clk			(clk)
-	);
+	reg	[2:0]			msr;
 
-	always	@(msr,dcache_addr[`CACHEADDRBITS+2-1:2])
+	reg	[15:0]			cnt_burst;
+	reg	[15:0]			cnt_fill;
+
+	reg	[`ADDRMSBBITS-1:0]	addrmsb1;
+	reg	[`ADDRMSBBITS-1:0]	addrmsb2;
+
+	reg				dirty;
+
+
+	localparam	[2:0]	MSR_INIT=3'b000,MSR_FILL=3'b001,MSR_VALID=3'b010;
+
+	always @(dpram_flushaddr,msr,dcache_addr[`CACHEADDRBITS+1-1:2])
 	begin
-		if (msr==MSR_VALID)
-		begin
-			dpram_rdaddr<=dcache_addr[`CACHEADDRBITS+2-1:2];
-		end else begin
-			dpram_rdaddr<=addr_flush;
-		end
+		dpram_raddr<=(msr==MSR_FLUSH)?dpram_flushaddr:dcache_addr[`CACHEADDRBITS+1-1:2]);
 	end
 
+	dpram_32x32	DPRAM0(
+		.raddr		(dpram_raddr),
+		.dataout	(line_out),
+		.waddr		(dpram_waddr),
+		.datain		(dpram_datain),
+		.we		(dpram_we),
+		.clk		(clk)
+	);
 
 
 	always	@(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
 		begin
-			ttl		<=`TTLBITS'd0;
-			addrmsb		<=`ADDRMSBBITS'b0;
-			dirty		<=1'b0;
 			msr		<=MSR_INIT;
-			miss		<=1'b1;
+			line_out	<=`DATABITS'b0;
+			line_valid	<=1'b0;
+			mem_addr	<=`ADDRBOTS'b0;
+			mem_rdreq	<=1'b0;
+			mem_wrreq	<=1'b0;
+			dirty		<=1'b0;
+			miss		<=1'b0;
+			dpram_flushaddr	<=`CACHEADDRBITS'b0;
+			dpram_datain	<=`DATABITS'b0;
 			cnt_burst	<=16'd0;
-			cnt_fill	<=16'd0'
+			cnt_fill	<=16'd0;
+			addrmsb1	<=`ADDRMSBBITS'b0;
+			addrmsb2	<=`ADDRMSBBITS'b0;
 		end else begin
-			r_dcache_addr	<=dcache_addr;
-			v_dpram_we	=1'b0;
-			v_ttl		=ttl;
-			v_mem_addr	=`ADDRBITS'h0;
-			v_mem_rdreq	=1'b0;
-			v_miss		=1'b0;
-			v_line_valid	=1'b0;
-
-			r_wrreq		<=wrreq;
 			case (msr)
-				MSR_INIT: begin
-					v_miss	=(rdreq | wrreq);
-					if (fill_req)
+				MSR_INIT:	begin
+					miss	<=1'b1;
+					if (line_fill)
 					begin
-						addrmsb		<=dcache_addr[`ADDRBITS:`CACHEADDRBITS+2];
-						msr		<= MSR_FILL;
-						v_mem_addr	={dcache_addr[`ADDRBITS-1:2,2'b00};
-						v_mem_rdreq	=1'b1;
+						addrmsb2	<=addrmsb1;
+						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1];
+						dpram_waddr	<=`CACHEADDRBITS'd0;
+						cnt_fill	<=16'd0;
+						cnt_burst	<=mem_burstlen;
+						msr		<=MSR_FILL;
 					end
 				end
-				MSR_FILL: begin
-					v_mem_addr={dcache_addr[`ADDRBITS:`CACHEADDRBITS+2],cnt_fill[`CACHEADDRBITS-1:0],2'b00};
+				MSR_FILL:	begin
+					miss	<=1'b0;
 					if (cnt_fill==16'd`CACHEWORDS)
 					begin
-						cnt_burst	<=16'd0;
-						cnt_fill	<=16'd0'
-						msr		<=MSR_PREVALID;
-						ttl		<=`MAXTTL;
+						msr		<=MSR_VALID;
+						dpram_we	<=1'b0;
+						mem_rdreq	<=1'b0;
 					end else if (cnt_burst==mem_burstlen)
 					begin
-						v_mem_rdreq	=1'b1;
+						dpram_we	<=1'b0;
+						mem_addr	<={addrmsb1,dpram_waddr,2'b00};
+						dpram_waddr     <=dpram_waddr-`CACHEADDRBITS'd1;
+						mem_rdreq	<=1'b1;
 						cnt_burst	<=16'd0;
-					end else if (mem_valid) begin
-						cnt_burst	<=cnt_burst+16;d1;
-						cnt_fill	<=cnt_fill +16'd1;
-						// TODO: write to DPRAM
+					end else if (mem_valid)
+					begin
+						cnt_burst	<=cnt_burst+16'd1;
+						cnt_fill	<=cnt_fill+16'd1;
+						dpram_waddr	<=dpram_waddr+`CACHEADDRBITS'd1;
+						dpram_we	<=1'b1;
+						dpram_datain	<=mem_out;
+						mem_rdreq	<=1'b0;
+					end else begin
+						mem_rdreq	<=1'b0;
+						dpram_we	<=1'b0;
 					end
-				end
-				MSR_PREVALID: begin
-					// TODO: in the rdreq case: validate the output
-					// in the wrreq case: write to dpram, mark as dirty
 				end
 				MSR_VALID: begin
-					// in case rdreq & hit: output
-					// in case wrreq & hit: write to dpram, mark as dirty
-					// in case miss: miss
-					// in case fill_req & dirty: --> MSR_FLUSH
-					// in case fill_req & !dirty:--> MSR_FILL
-	
-					v_miss=1'b0;
-					if (rdreq)
+					v_line_valid	=1'b0;
+					v_dpram_we	=1'b0;
+					v_dpram_waddr	=dpram_waddr;	
+				
+					if (dpcache_rdreq|dpcache_wrreq)
 					begin
-						if (dcache_addr[`ADDRBITS:`CACHEADDRBITS+2]==addrmsb)
-						begin
-							v_line_valid	=1'b1;
-						end else begin
-							v_miss		=1'b1;
-							if (v_ttl!=`TTLBITS'd0)
-							begin
-								v_ttl	=v_ttl-`TTLBITS'd1;
-							end
-						end
+						miss<=(dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1);
+					end else begin
+						miss<=1'b0;
 					end
-					if (wrreq)
+
+					if (dpcache_rdreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1))
 					begin
-						dirty	<=1'b1;
-						if (dcache_addr[`ADDRBITS:`CACHEADDRBITS+2]==addrmsb)
-						begin
-							v_line_valid	=1'b1;
-							v_dpram_we	=1'b1;
-							dpram_datain	<=dache_in;
-							dpram_waddr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
-						end else begin
-							v_miss		=1'b1;
-							if (v_ttl!=`TTLBITS'd0)
-							begin
-								v_ttl	=v_ttl-`TTLBITS'd1;
-							end
-						end
-						
+						v_line_valid	=1'b1;
 					end
-					if (fill_req)
+					if (dpcache_wrreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1]!=addrmsb1))
 					begin
-						addrmsb		<=dcache_addr[`ADDRBITS:`CACHEADDRBITS+2];
-						addrmsb2	<=addrmsb;
+						dirty		<=1'b1;
+						v_line_valid	=1'b1;
+						v_dpram_we	=1'b1;
+						dpram_datain	<=dcache_in;
+						v_dpram_waddr	=cache_addr[`CACHEADDRBITS+2-1:2];
+					end
+					
+					if (line_fill)
+					begin
+						addrmsb2	<=addrmsb1;
+						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2-1];
+						v_dpram_waddr	=`CACHEADDRBITS'd0;
+						dpram_flushaddr	<=`CACHEADDRBITS'd0;
 						cnt_fill	<=16'd0;
-						cnt_burst	<=16'd0;
-						addr_flush	<=`CACHEADDRBITS'd0;
+						cnt_burst	<=mem_burstlen;
 						msr		<=dirty? MSR_FLUSH:MSR_FILL;
 					end
-							
-					line_valid	<=v_line_valid;
-					miss		<=v_miss;
+					line_valid	=v_valid;
+					dpram_we	=v_dpram_we;
+					dpram_waddr	=v_dpram_waddr;
 				end
 				MSR_FLUSH: begin
-					// flush out
-					// then  --> msr_fill
+					miss	<=1'b0;
+					dirty	<=1'b0;
+					if (cnt_fill==16'd`CACHEWORDS)
+					begin
+						dpram_waddr	<=`CACHEADDRBITS'd0;
+						cnt_fill	<=16'd0;
+						cnt_burst	<=mem_burstlen;
+						msr		<=MSR_FILL;
+						mem_wrreq	<=1'b0;
+					end else begin
+						cnt_fill	<=cnt_fill+16'd1;
+						if (cnt_burst==mem_burstlen)
+						 	cnt_burst	<=16'd0;
+							mem_wrreq	<=1'b1;
+						end else begin
+							mem_wrreq	<=1'b0;
+							cnt_burst	<=cnt_burst+16'd1;
+						end
+						mem_addr	<={addrmsb2,dpram_flushaddr,2'b00};
+						dpram_flushaddr	<=dpram_flushaddr+`CACHEADDRBITS'd1;
+					end
 				end
-			endcase	
-
-
-			ttl		<=v_ttl;
-			miss		<=v_miss;
-			line_valid	<=v_line_valid;
-			mem_addr	<=v_mem_addr;
-			mem_rdreq	<=v_mem_rdreq;
-			dpram_we	<=v_dpram_we;
+			endcase
 		end
 	end
 endmodule
