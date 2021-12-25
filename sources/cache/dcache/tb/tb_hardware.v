@@ -21,7 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //(SPDX short identifier: BSD-1-Clause)
 //
-
+/*
 module	tbstimuli(
 	output	[31:0]	dcache_addr,
 	output	[31:0]	dcache_datain,
@@ -105,110 +105,106 @@ module	tbstimuli(
 		end
 	end
 endmodule	
-
+*/
 
 module	uart_out(
-	output		tx,
-	output		ready,
-	input	[31:0]	value,
-	input		valid,
-	input		reset_n,
-	input		clk
-	);
+	output			tx,
+	output			ready,
+
 	
-	reg	tx;
-	reg	ready;
-	reg	[9:0]	cnt_baud;
-	reg	[3:0]	cnt_byte;
-	reg	[9:0]	shift_char;
-	reg	[31:0]	shift_value;
-	reg	[31:0]	nxt_value;
-	reg		nxt_valid;
-	reg	[31:0]	v_nxt_value;
-	reg		v_nxt_valid;
+	input		[31:0]	value,
+	input					value_good,
+	
+	input		clk,
+	input		reset_n
+);
 
 
+	reg	r_tx;
+	reg	r_ready;
+	reg	[8:0]	baudcnt;
+	reg	[9:0] shifter;
+	
+	reg	[3:0]	bytecnt;
+	reg	[31:0]	shiftval;
+	
+	assign	tx=r_tx;
+	assign	ready=r_ready;
+	
 	always	@(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
 		begin
-			tx		<=1'b1;
-			cnt_baud	<=9'd434;		// 50000000/115200	= 434		every 434 cycles 1 bit equals 1152000 baud.
-			cnt_byte	<=4'd0;
-			shift_char	<=10'b0000000000;
-			shift_value	<=32'h00000000;
-			nxt_valid	<=1'b0;
-			nxt_value	<=32'h0;
-			ready		<=1'b0;
+			r_tx		<=1'b1;
+			r_ready	<=1'b0;
+			baudcnt	<=9'd434;
+			shifter	<=10'b0000000000;
+			bytecnt	<=4'd0;
 		end else begin
-			v_nxt_valid	=nxt_valid|valid;
-			v_nxt_value	=nxt_value|value;
-			if (cnt_baud==9'd0)
+			if (shifter!=10'b0000000000)
 			begin
-				cnt_baud	<=9'd434;
-				if (shift_char==10'b0000000000)
+				if (baudcnt==9'd0)
 				begin
-					case (cnt_byte)
-						4'd0: begin	
-							ready<=!nxt_valid;
-							if (nxt_valid)
-							begin
-								v_nxt_valid	=valid;
-								v_nxt_value	=value;
-								shift_value	<=nxt_value;
-								cnt_byte	<=4'd10;
-							end
-						end
-						4'd1:	begin
-							cnt_byte	<=4'd0;
-							shift_char	<=10'b0000010101;	// 1 start bit =0, line feed=10 (msb first), 1 stop bit
-						end
-						4'd2:	begin
-							cnt_byte	<=4'd1;
-							shift_char	<=10'b0000011011;	// 1 start bit =0, carriage return=13 (msb first), 1 stop bit
-						end
-						default:begin
-							cnt_byte	<=cnt_byte-4'd1;
-							case (shift_value[31:28])
-								4'h0:	begin shift_char<=10'b0001100001;end	// 0= 0x30
-								4'h1:	begin shift_char<=10'b0001100011;end	// 1= 0x31
-								4'h2:	begin shift_char<=10'b0001100101;end	// 2= 0x32
-								4'h3:	begin shift_char<=10'b0001100111;end	// 3= 0x33
-
-								4'h4:	begin shift_char<=10'b0001101001;end	// 4= 0x34
-								4'h5:	begin shift_char<=10'b0001101011;end	// 5= 0x35
-								4'h6:	begin shift_char<=10'b0001101101;end	// 6= 0x36
-								4'h7:	begin shift_char<=10'b0001101111;end	// 7= 0x37
-
-								4'h8:	begin shift_char<=10'b0001110001;end	// 8= 0x38
-								4'h9:	begin shift_char<=10'b0001110011;end	// 9= 0x39
-								4'hA:	begin shift_char<=10'b0010000011;end	// A= 0x41
-								4'hB:	begin shift_char<=10'b0010000101;end	// B= 0x42
-
-								4'hC:	begin shift_char<=10'b0010000111;end	// C= 0x43
-								4'hD:	begin shift_char<=10'b0010001001;end	// D= 0x44
-								4'hE:	begin shift_char<=10'b0010001011;end	// E= 0x45
-								4'hF:	begin shift_char<=10'b0010001101;end	// F= 0x46
-							endcase
-							shift_value<={shift_value[27:0],4'b0000};
-						end
-					endcase
+					baudcnt<=9'd434;
+					r_tx<=shifter[0];
+					shifter<={1'b0,shifter[9:1]};
 				end else begin
-					ready		<=1'b0;
-					tx		<=shift_char[9];
-					shift_char	<={shift_char[8:0],1'b0};
+					baudcnt<=baudcnt-9'd1;
 				end
-				
-				nxt_valid	<=v_nxt_valid;
-				nxt_value	<=v_nxt_value;	
 			end else begin
-				cnt_baud	<=cnt_baud-9'd1;
+				case (bytecnt)
+						4'd0:	begin
+									r_ready<=!value_good;
+									if (value_good)
+									begin
+										shiftval<=value;
+										bytecnt<=4'd10;
+									end
+								end
+						4'd1:	begin
+									bytecnt<=bytecnt-4'd1;
+									shifter<={1'b1,8'h0a,1'b0};			// line feed
+								end
+						4'd2:	begin
+									bytecnt<=bytecnt-4'd1;
+									shifter<={1'b1,8'h0d,1'b0};			// carriage return
+								end
+						default:	begin
+								bytecnt<=bytecnt-4'd1;
+								shiftval<={shiftval[27:0],4'b0000};
+								case (shiftval[31:28])
+									4'h0:		begin	shifter<={1'b1,8'h30,1'b0};	end
+									4'h1:		begin	shifter<={1'b1,8'h31,1'b0};	end
+									4'h2:		begin	shifter<={1'b1,8'h32,1'b0};	end
+									4'h3:		begin	shifter<={1'b1,8'h33,1'b0};	end
+									
+									4'h4:		begin	shifter<={1'b1,8'h34,1'b0};	end
+									4'h5:		begin	shifter<={1'b1,8'h35,1'b0};	end
+									4'h6:		begin	shifter<={1'b1,8'h36,1'b0};	end
+									4'h7:		begin	shifter<={1'b1,8'h37,1'b0};	end
+									
+
+									4'h8:		begin	shifter<={1'b1,8'h38,1'b0};	end
+									4'h9:		begin	shifter<={1'b1,8'h39,1'b0};	end
+									4'ha:		begin	shifter<={1'b1,8'h41,1'b0};	end
+									4'hb:		begin	shifter<={1'b1,8'h42,1'b0};	end
+									
+									4'hc:		begin	shifter<={1'b1,8'h43,1'b0};	end
+									4'hd:		begin	shifter<={1'b1,8'h44,1'b0};	end
+									4'he:		begin	shifter<={1'b1,8'h45,1'b0};	end
+									default:	begin	shifter<={1'b1,8'h46,1'b0};	end
+									
+									
+								endcase
+								
+						
+								end
+					endcase
 			end
-			nxt_valid	<=v_nxt_valid;
-			nxt_value	<=v_nxt_value;
 		end
 	end
 endmodule
+
 
 module	tbblock(
 	output		tx,	
@@ -238,6 +234,7 @@ module	tbblock(
 //		.reset_n		(reset_n),
 //		.clk			(clk)	
 //	);
+/*
 	uart_out	UART_OUT0(
 		.tx		(tx),
 		.ready		(ready),
@@ -246,6 +243,7 @@ module	tbblock(
 		.reset_n	(reset_n),
 		.clk		(clk)
 	);	
+	*/
 	always	@(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
@@ -255,29 +253,39 @@ module	tbblock(
 			cnt	<=cnt+32'd1;
 		end
 	end
+
+	uart_out	UART_OUT0(
+		.tx	(tx),
+		.ready	(ready),
+		.value	(cnt),
+		.value_good	(ready),
+		.reset_n	(reset_n),
+		.clk		(clk)
+	);
 endmodule
 
-module main();
-	reg reset_n;	
-	reg clk;
-	wire tx;
+module tb();
+	reg	clk;
+	reg	reset_n;
+	wire	tx;
 
 	tbblock	TBBLOCK0(
 		.tx		(tx),
 		.reset_n	(reset_n),
 		.clk		(clk)
-	);	
+	);
 
-	always	#5 clk<=!clk;
-	
+	always	#5	clk<=!clk;
+
 	initial begin
 		$dumpfile("tb_hardware.vcd");
 		$dumpvars(0);
+
 		#0	reset_n<=1'b1;clk<=1'b1;
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
-		#8	$display("go!");
+		#8	$display("go");
 
-		#20000000	$finish();
+		#1000000 $finish();
 	end
 endmodule
