@@ -21,7 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //(SPDX short identifier: BSD-1-Clause)
 //
-/*
+
 module	tbstimuli(
 	output	[31:0]	dcache_addr,
 	output	[31:0]	dcache_datain,
@@ -31,24 +31,30 @@ module	tbstimuli(
 	input		reset_n,
 	input		clk
 );
-	reg	[31:0]	dcache_addr;
-	reg	[31:0]	dcache_datain;
-	reg		dcache_rdreq;
-	reg		dcache_wrreq;	
-	reg		line_fill;
+	reg	[31:0]	r_dcache_addr;
+	reg	[31:0]	r_dcache_datain;
+	reg		r_dcache_rdreq;
+	reg		r_dcache_wrreq;	
+	reg		r_line_fill;
 	reg	[24:0]	cnter;
 
+
+	assign	dcache_addr	=r_dcache_addr;
+	assign	dcache_datain	=r_dcache_datain;
+	assign	dcache_rdreq	=r_dcache_rdreq;
+	assign	dcache_wrreq	=r_dcache_wrreq;
+	assign	line_fill	=r_line_fill;
 		
 	always	@(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
 		begin
 			cnter		<=24'd0;
-			dcache_addr	<=32'b0;
-			dcache_datain	<=32'b0;
-			dcache_rdreq	<=1'b0;
-			dcache_wrreq	<=1'b0;
-			line_fill	<=1'b0;
+			r_dcache_addr	<=32'b0;
+			r_dcache_datain	<=32'b0;
+			r_dcache_rdreq	<=1'b0;
+			r_dcache_wrreq	<=1'b0;
+			r_line_fill	<=1'b0;
 		end else begin
 			if (cnter!=24'hfffffc)
 			begin
@@ -58,54 +64,57 @@ module	tbstimuli(
 			if (cnter[15:0]==16'hffff)
 			begin
 				case (cnter[23:16])
-					8'h00:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end
-					8'h01:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end
-					8'h02:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b1;end	// here, the cache line is being filled
-					8'h03:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b0;end
+					8'h00:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end
+					8'h01:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end
+					8'h02:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// here, the cache line is being filled
+					8'h03:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end
 
-					8'h04:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// 12345678 is being read
-					8'h05:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h9abcdef0;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// now, 9abcdef0 is stored at addr 0
-					8'h06:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h00000000;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// here, the cache line is being filled
-					8'h07:	begin	dcache_addr<=32'h00000004;dcache_datain<=32'h12345678;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// and 12345678 at addr 4
+					8'h04:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 12345678 is being read
+					8'h05:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h9abcdef0;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// now, 9abcdef0 is stored at addr 0
+					8'h06:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h00000000;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// here, the cache line is being filled
+					8'h07:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// and 12345678 at addr 4
 
-					8'h08:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h55555555;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// 55555555 should be stored at 104
-					8'h09:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h55555555;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b1;end	// 
-					8'h0a:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h55555555;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// 
-					8'h0b:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h55555555;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// 
+					8'h08:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
+					8'h09:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// 
+					8'h0a:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
+					8'h0b:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
 
-					8'h0c:	begin	dcache_addr<=32'h00000108;dcache_datain<=32'h55555555;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// 55555555 should be stored at 104
-					8'h0d:	begin	dcache_addr<=32'h0000010c;dcache_datain<=32'h66666666;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// 
-					8'h0e:	begin	dcache_addr<=32'h00000110;dcache_datain<=32'h77777777;dcache_wrreq<=1'b1;dcache_rdreq<=1'b0;line_fill<=1'b0;end	// 
-					8'h0f:	begin	dcache_addr<=32'h0000010c;dcache_datain<=32'h77777777;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// should return 66666666
+					8'h0c:	begin	r_dcache_addr<=32'h00000108;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
+					8'h0d:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h66666666;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
+					8'h0e:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
+					8'h0f:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 66666666
 
-					8'h10:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// 
-					8'h11:	begin	dcache_addr<=32'h00000000;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b1;end	// should return 9abcdef0
-					8'h12:	begin	dcache_addr<=32'h00000004;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// should return 12345678
-					8'h13:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// 
+					8'h10:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
+					8'h11:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// should return 9abcdef0
+					8'h12:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 12345678
+					8'h13:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
 
-					8'h14:	begin	dcache_addr<=32'h00000104;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b0;line_fill<=1'b1;end	// should return 55555555
-					8'h15:	begin	dcache_addr<=32'h0000010c;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// should return 66666666
-					8'h16:	begin	dcache_addr<=32'h00000110;dcache_datain<=32'h12345678;dcache_wrreq<=1'b0;dcache_rdreq<=1'b1;line_fill<=1'b0;end	// should return 77777777
+					8'h14:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// should return 55555555
+					8'h15:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 66666666
+					8'h16:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 77777777
+					8'h17:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
+					8'h18:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// 
+					8'h19:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 9abcdef0
 
 					default:begin
-						dcache_addr	<=32'b0;
-						dcache_datain	<=32'b0;
-						dcache_rdreq	<=1'b0;
-						dcache_wrreq	<=1'b0;
-						line_fill	<=1'b0;
+						r_dcache_addr	<=32'b0;
+						r_dcache_datain	<=32'b0;
+						r_dcache_rdreq	<=1'b0;
+						r_dcache_wrreq	<=1'b0;
+						r_line_fill	<=1'b0;
 						end
 				endcase
 			end else begin
-				dcache_addr	<=32'b0;
-				dcache_datain	<=32'b0;
-				dcache_rdreq	<=1'b0;
-				dcache_wrreq	<=1'b0;
-				line_fill	<=1'b0;
+				r_dcache_addr	<=32'b0;
+				r_dcache_datain	<=32'b0;
+				r_dcache_rdreq	<=1'b0;
+				r_dcache_wrreq	<=1'b0;
+				r_line_fill	<=1'b0;
 			end
 		end
 	end
 endmodule	
-*/
+
 
 module	uart_out(
 	output			tx,
@@ -157,6 +166,7 @@ module	uart_out(
 									r_ready<=!value_good;
 									if (value_good)
 									begin
+										$display("output value %08X",value);
 										shiftval<=value;
 										bytecnt<=4'd10;
 									end
@@ -212,56 +222,75 @@ module	tbblock(
 	input		clk
 );
 
-	reg	[31:0]	cnt;
-	wire		ready;
-//	dcache_line	DCACHE_LINE0(
-//		.dcache_addr		(dcache_addr),
-//		.dcache_datain		(dcache_datain),
-//		.dcache_rdreq		(dcache_rdreq),
-//		.dcache_wrreq		(dcache_wrreq),
-//		.line_fill		(line_fill),
-//		.line_out		(line_out),
-//		.line_valid		(line_valid),
-//		.line_miss		(line_miss),
-//
-//		.mem_out		(mem_out),
-//		.mem_burstlen		(mem_burstlen),
-//		.mem_valid		(mem_valid),
-//		.mem_addr		(mem_addr),
-//		.mem_rdreq		(mem_rdreq),
-//		.mem_wrreq		(mem_wrreq),
-//
-//		.reset_n		(reset_n),
-//		.clk			(clk)	
-//	);
-/*
-	uart_out	UART_OUT0(
-		.tx		(tx),
-		.ready		(ready),
-		.value		(cnt),
-		.valid		(ready),
-		.reset_n	(reset_n),
-		.clk		(clk)
-	);	
-	*/
-	always	@(posedge clk or negedge reset_n)
-	begin
-		if (!reset_n)
-		begin
-			cnt	<=32'd0;
-		end else begin
-			cnt	<=cnt+32'd1;
-		end
-	end
 
-	uart_out	UART_OUT0(
-		.tx	(tx),
-		.ready	(ready),
-		.value	(cnt),
-		.value_good	(ready),
+	wire	[31:0]	dcache_addr;
+	wire	[31:0]	dcache_datain;
+	wire		dcache_rdreq;
+	wire		dcache_wrreq;
+	wire		line_fill;
+	wire	[31:0]	line_out;
+	wire		line_valid;
+	wire		line_miss;
+	wire	[31:0]	mem_out;
+	wire	[31:0]	mem_addr;
+	reg		mem_valid;
+	wire		mem_rdreq;
+	wire		mem_wrreq;
+
+
+	tbstimuli TBSTIMULI0(
+		.dcache_addr	(dcache_addr),
+		.dcache_datain	(dcache_datain),
+		.dcache_rdreq	(dcache_rdreq),
+		.dcache_wrreq	(dcache_wrreq),
+		.line_fill	(line_fill),
 		.reset_n	(reset_n),
 		.clk		(clk)
 	);
+
+
+	spram_512x32	BIGRAM0(
+		.datain		(line_out),
+		.we		(mem_wrreq),
+		.addr		(mem_addr[8:0]),
+		.dataout	(mem_out),
+		.clk		(clk)
+	);
+	
+	dcache_line	DCACHE_LINE0(
+		.dcache_addr		(dcache_addr),
+		.dcache_datain		(dcache_datain),
+		.dcache_rdreq		(dcache_rdreq),
+		.dcache_wrreq		(dcache_wrreq),
+		.line_fill		(line_fill),
+		.line_out		(line_out),
+		.line_valid		(line_valid),
+		.line_miss		(line_miss),
+
+		.mem_out		(mem_out),
+		.mem_burstlen		(16'd1),
+		.mem_valid		(mem_valid),
+		.mem_addr		(mem_addr),
+		.mem_rdreq		(mem_rdreq),
+		.mem_wrreq		(mem_wrreq),
+
+		.reset_n		(reset_n),
+		.clk			(clk)	
+	);
+
+	uart_out	UART_OUT0(
+		.tx		(tx),
+		.ready		(open),
+		.value		(line_out),
+		.value_good	(line_valid),
+		.reset_n	(reset_n),
+		.clk		(clk)
+	);
+
+	always	@(posedge clk)
+	begin
+		mem_valid	<=mem_rdreq|mem_wrreq;
+	end
 endmodule
 
 module tb();
@@ -286,6 +315,6 @@ module tb();
 		#1	reset_n<=1'b1;
 		#8	$display("go");
 
-		#1000000 $finish();
+		#50000000 $finish();
 	end
 endmodule
