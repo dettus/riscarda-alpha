@@ -27,6 +27,7 @@ module	tbstimuli(
 	output	[31:0]	dcache_datain,
 	output		dcache_rdreq,
 	output		dcache_wrreq,	
+	output	[3:0]	dcache_be,
 	output		line_fill,
 	input		reset_n,
 	input		clk
@@ -35,6 +36,7 @@ module	tbstimuli(
 	reg	[31:0]	r_dcache_datain;
 	reg		r_dcache_rdreq;
 	reg		r_dcache_wrreq;	
+	reg	[ 3:0]	r_dcache_be;
 	reg		r_line_fill;
 	reg	[24:0]	cnter;
 
@@ -43,6 +45,7 @@ module	tbstimuli(
 	assign	dcache_datain	=r_dcache_datain;
 	assign	dcache_rdreq	=r_dcache_rdreq;
 	assign	dcache_wrreq	=r_dcache_wrreq;
+	assign	dcache_be	=r_dcache_be;
 	assign	line_fill	=r_line_fill;
 		
 	always	@(posedge clk or negedge reset_n)
@@ -54,6 +57,7 @@ module	tbstimuli(
 			r_dcache_datain	<=32'b0;
 			r_dcache_rdreq	<=1'b0;
 			r_dcache_wrreq	<=1'b0;
+			r_dcache_be	<=4'b1111;
 			r_line_fill	<=1'b0;
 		end else begin
 			if (cnter!=24'hfffffc)
@@ -64,43 +68,44 @@ module	tbstimuli(
 			if (cnter[15:0]==16'hffff)
 			begin
 				case (cnter[23:16])
-					8'h00:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end
-					8'h01:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end
-					8'h02:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// here, the cache line is being filled
-					8'h03:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end
+					8'h00:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end
+					8'h01:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end
+					8'h02:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b1;end	// here, the cache line is being filled
+					8'h03:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end
 
-					8'h04:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 12345678 is being read
-					8'h05:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h9abcdef0;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// now, 9abcdef0 is stored at addr 0
-					8'h06:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h00000000;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// here, the cache line is being filled
-					8'h07:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// and 12345678 at addr 4
+					8'h04:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 12345678 is being read
+					8'h05:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h9abcdef0;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// now, 9abcdef0 is stored at addr 0
+					8'h06:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h00000000;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// here, the cache line is being filled
+					8'h07:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// and 12345678 at addr 4
 
-					8'h08:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
-					8'h09:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// 
-					8'h0a:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
-					8'h0b:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
+					8'h08:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
+					8'h09:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b1;end	// 
+					8'h0a:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
+					8'h0b:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
 
-					8'h0c:	begin	r_dcache_addr<=32'h00000108;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
-					8'h0d:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h66666666;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
-					8'h0e:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_line_fill<=1'b0;end	// 
-					8'h0f:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 66666666
+					8'h0c:	begin	r_dcache_addr<=32'h00000108;r_dcache_datain<=32'h55555555;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 55555555 should be stored at 104
+					8'h0d:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h66666666;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
+					8'h0e:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b1;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
+					8'h0f:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h77777777;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// should return 66666666
 
-					8'h10:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
-					8'h11:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// should return 9abcdef0
-					8'h12:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 12345678
-					8'h13:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
+					8'h10:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
+					8'h11:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b1;end	// should return 9abcdef0
+					8'h12:	begin	r_dcache_addr<=32'h00000004;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// should return 12345678
+					8'h13:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
 
-					8'h14:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// should return 55555555
-					8'h15:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 66666666
-					8'h16:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 77777777
-					8'h17:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// 
-					8'h18:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_line_fill<=1'b1;end	// 
-					8'h19:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_line_fill<=1'b0;end	// should return 9abcdef0
+					8'h14:	begin	r_dcache_addr<=32'h00000104;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b1;end	// should return 55555555
+					8'h15:	begin	r_dcache_addr<=32'h0000010c;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// should return 66666666
+					8'h16:	begin	r_dcache_addr<=32'h00000110;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// should return 77777777
+					8'h17:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// 
+					8'h18:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b0;r_dcache_be<=4'b1111;r_line_fill<=1'b1;end	// 
+					8'h19:	begin	r_dcache_addr<=32'h00000000;r_dcache_datain<=32'h12345678;r_dcache_wrreq<=1'b0;r_dcache_rdreq<=1'b1;r_dcache_be<=4'b1111;r_line_fill<=1'b0;end	// should return 9abcdef0
 
 					default:begin
 						r_dcache_addr	<=32'b0;
 						r_dcache_datain	<=32'b0;
 						r_dcache_rdreq	<=1'b0;
 						r_dcache_wrreq	<=1'b0;
+						r_dcache_be	<=4'b0000;
 						r_line_fill	<=1'b0;
 						end
 				endcase
@@ -109,6 +114,7 @@ module	tbstimuli(
 				r_dcache_datain	<=32'b0;
 				r_dcache_rdreq	<=1'b0;
 				r_dcache_wrreq	<=1'b0;
+				r_dcache_be	<=4'b0000;
 				r_line_fill	<=1'b0;
 			end
 		end

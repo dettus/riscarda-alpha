@@ -24,8 +24,7 @@
 
 `define	ADDRBITS	32
 `define	DATABITS	32
-`define	MAXTTL		255
-`define	TTLBITS		8
+`define	BANKNUM		4
 
 `define	CACHEWORDS	32
 `define	CACHEADDRBITS	5
@@ -38,6 +37,7 @@ module	dcache_line(
 	input	[`DATABITS-1:0]	dcache_datain,
 	input			dcache_rdreq,
 	input			dcache_wrreq,
+	input	[`BANKNUM-1:0]	dcache_be,
 	// connection to the controller
 	input			line_fill,
 	output	[`DATABITS-1:0]	line_out,
@@ -72,7 +72,7 @@ module	dcache_line(
 	reg	[`CACHEADDRBITS-1:0]	dpram_waddr;
 	reg	[`CACHEADDRBITS-1:0]	v_dpram_waddr;
 	reg	[`DATABITS-1:0]		dpram_datain;
-	reg				dpram_we;
+	reg	[`BANKNUM-1:0]		dpram_we;
 	reg				v_dpram_we;
 
 	reg	[2:0]			msr;
@@ -96,12 +96,39 @@ module	dcache_line(
 		dpram_raddr<=(msr==MSR_FLUSH)?dpram_flushaddr:dcache_addr[`CACHEADDRBITS+2:2];	// TODO: why not +2-1?
 	end
 
-	dpram_32x32	DPRAM0(
+	dpram_32x8	DPRAM0(
 		.raddr		(dpram_raddr),
-		.dataout	(line_out),
+		.dataout	(line_out[ 7: 0]),
 		.waddr		(dpram_waddr),
-		.datain		(dpram_datain),
-		.we		(dpram_we),
+		.datain		(dpram_datain[ 7: 0]),
+		.we		(dpram_we[0]),
+		.clk		(clk)
+	);
+
+	dpram_32x8	DPRAM1(
+		.raddr		(dpram_raddr),
+		.dataout	(line_out[15: 8]),
+		.waddr		(dpram_waddr),
+		.datain		(dpram_datain[15: 8]),
+		.we		(dpram_we[1]),
+		.clk		(clk)
+	);
+
+	dpram_32x8	DPRAM2(
+		.raddr		(dpram_raddr),
+		.dataout	(line_out[23:16]),
+		.waddr		(dpram_waddr),
+		.datain		(dpram_datain[23:16]),
+		.we		(dpram_we[2]),
+		.clk		(clk)
+	);
+
+	dpram_32x8	DPRAM3(
+		.raddr		(dpram_raddr),
+		.dataout	(line_out[31:24]),
+		.waddr		(dpram_waddr),
+		.datain		(dpram_datain[31:24]),
+		.we		(dpram_we[3]),
 		.clk		(clk)
 	);
 
@@ -124,6 +151,7 @@ module	dcache_line(
 			dirty		<=1'b0;
 			dpram_flushaddr	<=`CACHEADDRBITS'b0;
 			dpram_datain	<=`DATABITS'b0;
+			dpram_we	<=4'b0;
 			cnt_burst	<=16'd0;
 			cnt_fill	<=16'd0;
 			addrmsb1	<=`ADDRMSBBITS'b0;
@@ -156,12 +184,12 @@ module	dcache_line(
 					if (cnt_fill==16'd`CACHEWORDS)
 					begin
 						msr		<=MSR_BREATHER;
-						dpram_we	<=1'b0;
+						dpram_we	<=4'b0;
 						r_mem_rdreq	<=1'b0;
 						r_line_valid	<=1'b0;
 					end else if (cnt_burst==mem_burstlen)
 					begin
-						dpram_we	<=1'b0;
+						dpram_we	<=4'b0;
 						r_mem_addr	<={addrmsb1,dpram_waddr,2'b00};
 						dpram_waddr     <=dpram_waddr-`CACHEADDRBITS'd1;
 						r_mem_rdreq	<=1'b1;
@@ -171,7 +199,7 @@ module	dcache_line(
 						cnt_burst	<=cnt_burst+16'd1;
 						cnt_fill	<=cnt_fill+16'd1;
 						dpram_waddr	<=dpram_waddr+`CACHEADDRBITS'd1;
-						dpram_we	<=1'b1;
+						dpram_we	<=4'b1111;
 						if (write_request & (dpram_waddr==write_addr))	// in case the last cache request was a WRITE
 						begin
 							write_request	<=1'b0;
@@ -182,7 +210,7 @@ module	dcache_line(
 						r_mem_rdreq	<=1'b0;
 					end else begin
 						r_mem_rdreq	<=1'b0;
-						dpram_we	<=1'b0;
+						dpram_we	<=4'b1111;
 					end
 				end
 				MSR_BREATHER: begin
@@ -229,7 +257,7 @@ module	dcache_line(
 						msr		<=dirty? MSR_FLUSH:MSR_FILL;
 					end
 					r_line_valid	<=v_line_valid;
-					dpram_we	<=v_dpram_we;
+					dpram_we	<=v_dpram_we?dcache_be:4'b0000;
 					dpram_waddr	<=v_dpram_waddr;
 				end
 				MSR_FLUSH: begin

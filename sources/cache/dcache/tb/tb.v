@@ -24,8 +24,7 @@
 
 `define	ADDRBITS	32
 `define	DATABITS	32
-`define	MAXTTL		255
-`define	TTLBITS		8
+`define	BANKNUM		4
 
 `define	CACHEWORDS	32
 `define	CACHEADDRBITS	5
@@ -39,6 +38,7 @@ module tb();
 	reg	[`DATABITS-1:0]	dcache_datain;
 	reg			dcache_rdreq;
 	reg			dcache_wrreq;
+	reg	[`BANKNUM-1:0]	dcache_be;
 	// connection to the controller
 	reg			line_fill;
 	wire	[`DATABITS-1:0]	line_out;
@@ -66,6 +66,7 @@ module tb();
 		.dcache_datain	(dcache_datain),
 		.dcache_rdreq	(dcache_rdreq),
 		.dcache_wrreq	(dcache_wrreq),
+		.dcache_be	(dcache_be),
 
 		.line_fill	(line_fill),
 		.line_out	(line_out),
@@ -110,6 +111,7 @@ module tb();
 			dcache_datain	<=`DATABITS'b0;
 			dcache_rdreq	<=1'b0;
 			dcache_wrreq	<=1'b0;
+			dcache_be	<=4'b1111;
 			line_fill	<=1'b0;
 			mem_out		<=`ADDRBITS'h0;
 			mem_burstlen	<=16'd32;
