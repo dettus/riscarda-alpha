@@ -85,6 +85,11 @@ module	dcache(
 	reg	[`TTLBITS-1:0]	ttl2;
 	reg	[`TTLBITS-1:0]	ttl3;
 
+	reg	[`TTLBITS-1:0]	v_ttl0;
+	reg	[`TTLBITS-1:0]	v_ttl1;
+	reg	[`TTLBITS-1:0]	v_ttl2;
+	reg	[`TTLBITS-1:0]	v_ttl3;
+
 	reg	[`TTLBITS-1:0]	v_low01;
 	reg	[`TTLBITS-1:0]	v_low23;
 
@@ -261,6 +266,10 @@ module	dcache(
 			
 		end else begin
 			v_fill	= `LINENUM'b0;
+			v_ttl0	= ttl0;
+			v_ttl1	= ttl1;
+			v_ttl2	= ttl2;
+			v_ttl3	= ttl3;
 			if (r_dcache_req)
 			begin
 				if (line_miss==4'b1111)
@@ -288,38 +297,45 @@ module	dcache(
 					end else begin
 						v_fill	=v_fill01;
 					end
-				end else begin
-					if (line_miss[0] & ttl0!=`TTLBITS'd255)
-					begin
-						ttl0<=ttl0+`TTLBITS'd1;
-					end else if (line_valid[0]) 
-					begin
-						ttl0<=`TTLBITS'd0;
-					end
-					if (line_miss[1] & ttl1!=`TTLBITS'd255)
-					begin
-						ttl1<=ttl1+`TTLBITS'd1;
-					end else if (line_valid[1]) 
-					begin
-						ttl1<=`TTLBITS'd1;
-					end
-					if (line_miss[2] & ttl2!=`TTLBITS'd255)
-					begin
-						ttl2<=ttl2+`TTLBITS'd1;
-					end else if (line_valid[2]) 
-					begin
-						ttl2<=`TTLBITS'd0;
-					end
-					if (line_miss[3] & ttl3!=`TTLBITS'd255)
-					begin
-						ttl3<=ttl3+`TTLBITS'd1;
-					end else if (line_valid[3]) 
-					begin
-						ttl3<=`TTLBITS'd0;
-					end
-
+					$display("v_fill = %b",v_fill);
 				end
+				if (line_miss[0] & ttl0!=`TTLBITS'd255)
+				begin
+					v_ttl0=ttl0+`TTLBITS'd1;
+				end 
+				if (line_miss[1] & ttl0!=`TTLBITS'd255)
+				begin
+					v_ttl1=ttl1+`TTLBITS'd1;
+				end 
+				if (line_miss[2] & ttl2!=`TTLBITS'd255)
+				begin
+					v_ttl2=ttl2+`TTLBITS'd1;
+				end 
+				if (line_miss[3] & ttl3!=`TTLBITS'd255)
+				begin
+					v_ttl3=ttl3+`TTLBITS'd1;
+				end 
 			end
+			if (line_valid[0]) 
+			begin
+				v_ttl0=`TTLBITS'd0;
+			end
+			if (line_valid[1]) 
+			begin
+				v_ttl1=`TTLBITS'd0;
+			end
+			if (line_valid[2]) 
+			begin
+				v_ttl2=`TTLBITS'd0;
+			end
+			if (line_valid[3]) 
+			begin
+				v_ttl3=`TTLBITS'd0;
+			end
+			ttl0		<=v_ttl0;
+			ttl1		<=v_ttl1;
+			ttl2		<=v_ttl2;
+			ttl3		<=v_ttl3;
 			r_dcache_req	<=dcache_rdreq|dcache_wrreq;
 			r_line_fill	<= v_fill;
 		end

@@ -87,6 +87,7 @@ module	dcache_line(
 	reg				write_request;
 	reg	[`CACHEADDRBITS-1:0]	write_addr;
 	reg	[`DATABITS-1:0]		write_value;
+	reg				v_line_miss;
 
 
 	localparam	[2:0]	MSR_INIT=3'b000,MSR_FILL=3'b001,MSR_VALID=3'b010,MSR_FLUSH=3'b011,MSR_BREATHER=3'b100;
@@ -144,7 +145,7 @@ module	dcache_line(
 		begin
 			msr		<=MSR_INIT;
 			r_line_valid	<=1'b0;
-			r_line_miss	<=1'b1;
+			r_line_miss	<=1'b0;
 			r_mem_addr	<=`ADDRBITS'b0;
 			r_mem_rdreq	<=1'b0;
 			r_mem_wrreq	<=1'b0;
@@ -160,14 +161,15 @@ module	dcache_line(
 			write_addr	<=`CACHEADDRBITS'd0;
 			write_value	<=`DATABITS'h0;
 		end else begin
+			v_line_miss	=1'b0;
 			case (msr)
 				MSR_INIT:	begin
-					r_line_miss	<=1'b1;
 					if (dcache_rdreq | dcache_wrreq)
 					begin
 						write_request	<=dcache_wrreq;
 						write_value	<=dcache_datain;
 						write_addr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
+						v_line_miss	=1'b1;
 					end
 					if (line_fill)
 					begin
@@ -180,7 +182,6 @@ module	dcache_line(
 					end
 				end
 				MSR_FILL:	begin
-					r_line_miss	<=1'b0;
 					if (cnt_fill==16'd`CACHEWORDS)
 					begin
 						msr		<=MSR_BREATHER;
@@ -214,9 +215,8 @@ module	dcache_line(
 					end
 				end
 				MSR_BREATHER: begin
-					r_line_valid	<=1'b0;
+					r_line_valid	<=1'b1;
 					msr		<=MSR_VALID;
-
 				end
 				MSR_VALID: begin
 					v_line_valid	=1'b0;
@@ -225,12 +225,10 @@ module	dcache_line(
 				
 					if ((dcache_rdreq|dcache_wrreq)&(dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2]!=addrmsb1))	// TODO: really? or +2+1??
 					begin
-						r_line_miss	<=1'b1;
+						v_line_miss	=1'b1;
 						write_request	<=dcache_wrreq;
 						write_value	<=dcache_datain;
 						write_addr	<=dcache_addr[`CACHEADDRBITS+2-1:2];
-					end else begin
-						r_line_miss	<=1'b0;
 					end
 
 					if (dcache_rdreq & (dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2]==addrmsb1))	// TODO: really? or +2+1??
@@ -261,7 +259,6 @@ module	dcache_line(
 					dpram_waddr	<=v_dpram_waddr;
 				end
 				MSR_FLUSH: begin
-					r_line_miss	<=1'b0;
 					dirty		<=1'b0;
 					if (cnt_fill==16'd`CACHEWORDS)
 					begin
@@ -285,6 +282,7 @@ module	dcache_line(
 					end
 				end
 			endcase
+			r_line_miss<=v_line_miss;
 		end
 	end
 endmodule
