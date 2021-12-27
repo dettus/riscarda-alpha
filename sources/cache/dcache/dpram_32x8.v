@@ -41,7 +41,7 @@ module	dpram_32x8
 			memblock[waddr]<=datain;
 		end
 	end
-	always	@(raddr)
+	always	@(raddr,memblock[raddr])
 	begin
 		dataout	<=memblock[raddr];
 	end

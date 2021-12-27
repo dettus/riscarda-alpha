@@ -297,7 +297,6 @@ module	dcache(
 					end else begin
 						v_fill	=v_fill01;
 					end
-					$display("v_fill = %b",v_fill);
 				end
 				if (line_miss[0] & ttl0!=`TTLBITS'd255)
 				begin
