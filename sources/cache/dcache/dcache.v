@@ -45,7 +45,7 @@ module	dcache(
 	// connection to the memory controller
 	input	[`DATABITS-1:0]	mem_out,
 	input			mem_valid,
-	input	[`ADDRBITS-1:0]	mem_addr,
+	output	[`ADDRBITS-1:0]	mem_addr,
 	output	[`DATABITS-1:0]	mem_in,
 	output			mem_wrreq,
 	output			mem_rdreq,
@@ -68,6 +68,7 @@ module	dcache(
 	wire	[`DATABITS-1:0]	line_out2;
 	wire	[`DATABITS-1:0]	line_out3;
 
+	reg	[`ADDRBITS-1:0]	r_mem_addr;
 	wire	[`ADDRBITS-1:0]	mem_addr0;
 	wire	[`ADDRBITS-1:0]	mem_addr1;
 	wire	[`ADDRBITS-1:0]	mem_addr2;
@@ -76,20 +77,21 @@ module	dcache(
 	wire	[`LINENUM-1:0]	line_valid;
 	wire	[`LINENUM-1:0]	line_miss;
 
-	wire	[`LINENUM-1:0]	mem_wrreq;
-	wire	[`LINENUM-1:0]	mem_rdreq;
+	wire	[`LINENUM-1:0]	int_mem_wrreq;
+	wire	[`LINENUM-1:0]	int_mem_rdreq;
 
 	reg	[`TTLBITS-1:0]	ttl0;
 	reg	[`TTLBITS-1:0]	ttl1;
 	reg	[`TTLBITS-1:0]	ttl2;
 	reg	[`TTLBITS-1:0]	ttl3;
 
-	reg	[`TTLBITS-1:0]	v_ttl01;
-	reg	[`TTLBITS-1:0]	v_ttl23;
+	reg	[`TTLBITS-1:0]	v_low01;
+	reg	[`TTLBITS-1:0]	v_low23;
 
 	reg	[`LINENUM-1:0]	v_fill01;
 	reg	[`LINENUM-1:0]	v_fill23;
 	reg	[`LINENUM-1:0]	v_fill;
+	reg			r_dcache_req;
 	
 
 	assign	dcache_dataout	=r_dcache_dataout;
@@ -97,6 +99,7 @@ module	dcache(
 	assign	mem_in		=r_mem_in;
 	assign	mem_wrreq	=r_mem_wrreq;
 	assign	mem_rdreq	=r_mem_rdreq;
+	assign	mem_addr	=r_mem_addr;
 
 
 	always	@(dcache_addr,dcache_wordlen)
@@ -117,19 +120,19 @@ module	dcache(
 		endcase
 	end
 
-	always	@(mem_addr0,mem_addr1,mem_addr2,mem_addr3,mem_rdreq,mem_wrreq)
+	always	@(mem_addr0,mem_addr1,mem_addr2,mem_addr3,int_mem_rdreq,int_mem_wrreq)
 	begin
-		case (mem_rdreq|mem_wrreq)
-			4'b0001:	begin	r_mem_addr<=mem_addr0;r_mem_rdreq<=r_mem_rdreq[0];r_mem_wrreq<=r_mem_wrreq[0];end
-			4'b0010:	begin	r_mem_addr<=mem_addr1;r_mem_rdreq<=r_mem_rdreq[1];r_mem_wrreq<=r_mem_wrreq[1];end
-			4'b0100:	begin	r_mem_addr<=mem_addr2;r_mem_rdreq<=r_mem_rdreq[2];r_mem_wrreq<=r_mem_wrreq[2];end
-			4'b1000:	begin	r_mem_addr<=mem_addr3;r_mem_rdreq<=r_mem_rdreq[3];r_mem_wrreq<=r_mem_wrreq[3];end
+		case (int_mem_rdreq|int_mem_wrreq)
+			4'b0001:	begin	r_mem_addr<=mem_addr0;r_mem_rdreq<=int_mem_rdreq[0];r_mem_wrreq<=int_mem_wrreq[0];end
+			4'b0010:	begin	r_mem_addr<=mem_addr1;r_mem_rdreq<=int_mem_rdreq[1];r_mem_wrreq<=int_mem_wrreq[1];end
+			4'b0100:	begin	r_mem_addr<=mem_addr2;r_mem_rdreq<=int_mem_rdreq[2];r_mem_wrreq<=int_mem_wrreq[2];end
+			4'b1000:	begin	r_mem_addr<=mem_addr3;r_mem_rdreq<=int_mem_rdreq[3];r_mem_wrreq<=int_mem_wrreq[3];end
 			default:	begin	r_mem_addr<=32'b0;r_mem_rdreq<=1'b0;r_mem_wrreq<=1'b0;end
 		endcase
 	end
-	always	@(line_out0,line_out1,line_out2,line_out3,mem_wrreq)
+	always	@(line_out0,line_out1,line_out2,line_out3,int_mem_wrreq)
 	begin
-		case(mem_wrreq)
+		case(int_mem_wrreq)
 			4'b0001:	begin	r_mem_in<=line_out0;end
 			4'b0010:	begin	r_mem_in<=line_out1;end
 			4'b0100:	begin	r_mem_in<=line_out2;end
@@ -140,11 +143,11 @@ module	dcache(
 	always	@(line_out0,line_out1,line_out2,line_out3,line_valid)
 	begin
 		case(line_valid)
-			4'b0001:	begin	r_dcache_out<=line_out0;r_dcache_valid<=line_valid[0];end
-			4'b0010:	begin	r_dcache_out<=line_out1;r_dcache_valid<=line_valid[1];end
-			4'b0100:	begin	r_dcache_out<=line_out2;r_dcache_valid<=line_valid[2];end
-			4'b1000:	begin	r_dcache_out<=line_out3;r_dcache_valid<=line_valid[3];end
-			default:	begin	r_dcache_out<=32'b0;r_dcache_valid<=1'b0;end
+			4'b0001:	begin	r_dcache_dataout<=line_out0;r_dcache_valid<=line_valid[0];end
+			4'b0010:	begin	r_dcache_dataout<=line_out1;r_dcache_valid<=line_valid[1];end
+			4'b0100:	begin	r_dcache_dataout<=line_out2;r_dcache_valid<=line_valid[2];end
+			4'b1000:	begin	r_dcache_dataout<=line_out3;r_dcache_valid<=line_valid[3];end
+			default:	begin	r_dcache_dataout<=32'b0;r_dcache_valid<=1'b0;end
 		endcase
 	end
 	dcache_line	DCACHE_LINE0(
@@ -154,7 +157,7 @@ module	dcache(
 		.dcache_wrreq		(dcache_wrreq),
 		.dcache_be		(r_dcache_be),
 
-		.line_fill		(line_fill[0]),
+		.line_fill		(r_line_fill[0]),
 		.line_out		(line_out0),
 		.line_valid		(line_valid[0]),
 		.line_miss		(line_miss[0]),
@@ -163,8 +166,8 @@ module	dcache(
 		.mem_burstlen		(`MEM_BURSTLEN),
 		.mem_valid		(mem_valid),
 		.mem_addr		(mem_addr0),
-		.mem_rdreq		(mem_rdreq[0]),
-		.mem_wrreq		(mem_wrreq[0]),
+		.mem_rdreq		(int_mem_rdreq[0]),
+		.mem_wrreq		(int_mem_wrreq[0]),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -177,7 +180,7 @@ module	dcache(
 		.dcache_wrreq		(dcache_wrreq),
 		.dcache_be		(r_dcache_be),
 
-		.line_fill		(line_fill[1]),
+		.line_fill		(r_line_fill[1]),
 		.line_out		(line_out1),
 		.line_valid		(line_valid[1]),
 		.line_miss		(line_miss[1]),
@@ -186,8 +189,8 @@ module	dcache(
 		.mem_burstlen		(`MEM_BURSTLEN),
 		.mem_valid		(mem_valid),
 		.mem_addr		(mem_addr1),
-		.mem_rdreq		(mem_rdreq[1]),
-		.mem_wrreq		(mem_wrreq[1]),
+		.mem_rdreq		(int_mem_rdreq[1]),
+		.mem_wrreq		(int_mem_wrreq[1]),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -200,7 +203,7 @@ module	dcache(
 		.dcache_wrreq		(dcache_wrreq),
 		.dcache_be		(r_dcache_be),
 
-		.line_fill		(line_fill[2]),
+		.line_fill		(r_line_fill[2]),
 		.line_out		(line_out2),
 		.line_valid		(line_valid[2]),
 		.line_miss		(line_miss[2]),
@@ -209,8 +212,8 @@ module	dcache(
 		.mem_burstlen		(`MEM_BURSTLEN),
 		.mem_valid		(mem_valid),
 		.mem_addr		(mem_addr2),
-		.mem_rdreq		(mem_rdreq[2]),
-		.mem_wrreq		(mem_wrreq[2]),
+		.mem_rdreq		(int_mem_rdreq[2]),
+		.mem_wrreq		(int_mem_wrreq[2]),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -223,7 +226,7 @@ module	dcache(
 		.dcache_wrreq		(dcache_wrreq),
 		.dcache_be		(r_dcache_be),
 
-		.line_fill		(line_fill[3]),
+		.line_fill		(r_line_fill[3]),
 		.line_out		(line_out3),
 		.line_valid		(line_valid[3]),
 		.line_miss		(line_miss[3]),
@@ -232,8 +235,8 @@ module	dcache(
 		.mem_burstlen		(`MEM_BURSTLEN),
 		.mem_valid		(mem_valid),
 		.mem_addr		(mem_addr3),
-		.mem_rdreq		(mem_rdreq[3]),
-		.mem_wrreq		(mem_wrreq[3]),
+		.mem_rdreq		(int_mem_rdreq[3]),
+		.mem_wrreq		(int_mem_wrreq[3]),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -248,6 +251,7 @@ module	dcache(
 			r_mem_in		<=`DATABITS'b0;
 			r_mem_wrreq		<=1'b0;
 			r_mem_rdreq		<=1'b0;
+			r_dcache_req		<=1'b0;
 			r_dcache_be		<=1'b0;
 			r_line_fill		<=`LINENUM'b0;
 			ttl0			<=`TTLBITS'd0;	
@@ -256,64 +260,68 @@ module	dcache(
 			ttl3			<=`TTLBITS'd0;	
 			
 		end else begin
-			v_fill	<= `LINENUM'b0;
-			if (line_miss==4'b1111)
+			v_fill	= `LINENUM'b0;
+			if (r_dcache_req)
 			begin
-				v_low01	=ttl0;
-				v_fill01=`LINENUM'b0001;
-				v_low23	=ttl2;
-				v_fill23=`LINENUM'b0100;
+				if (line_miss==4'b1111)
+				begin
+					v_low01	=ttl0;
+					v_fill01=`LINENUM'b0001;
+					v_low23	=ttl2;
+					v_fill23=`LINENUM'b0100;
 
-				if (ttl0<=ttl1)
-				begin
-					v_low01	=ttl1;
-					v_fill01=`LINENUM'b0010;
-				end
-				if (ttl2<=ttl3)
-				begin
-					v_low23	=ttl3;
-					v_fill23=`LINENUM'b1000;
-				end
+					if (ttl0<=ttl1)
+					begin
+						v_low01	=ttl1;
+						v_fill01=`LINENUM'b0010;
+					end
+					if (ttl2<=ttl3)
+					begin
+						v_low23	=ttl3;
+						v_fill23=`LINENUM'b1000;
+					end
 
-		
-				if (v_low01<=v_low23)
-				begin
-					v_fill	=v_fill23;
+			
+					if (v_low01<=v_low23)
+					begin
+						v_fill	=v_fill23;
+					end else begin
+						v_fill	=v_fill01;
+					end
 				end else begin
-					v_fill	=v_fill01;
-				end
-			end else begin
-				if (line_miss[0] & ttl0!=`TTLBITS'd255)
-				begin
-					ttl0<=ttl0+`TTLBITS'd1;
-				end else if (line_valid[0]) 
-				begin
-					ttl0<=`TTLBITS'd0;
-				end
-				if (line_miss[1] & ttl1!=`TTLBITS'd255)
-				begin
-					ttl1<=ttl1+`TTLBITS'd1;
-				end else if (line_valid[1]) 
-				begin
-					ttl1<=`TTLBITS'd1;
-				end
-				if (line_miss[2] & ttl2!=`TTLBITS'd255)
-				begin
-					ttl2<=ttl2+`TTLBITS'd1;
-				end else if (line_valid[2]) 
-				begin
-					ttl2<=`TTLBITS'd0;
-				end
-				if (line_miss[3] & ttl3!=`TTLBITS'd255)
-				begin
-					ttl3<=ttl3+`TTLBITS'd1;
-				end else if (line_valid[3]) 
-				begin
-					ttl3<=`TTLBITS'd0;
-				end
+					if (line_miss[0] & ttl0!=`TTLBITS'd255)
+					begin
+						ttl0<=ttl0+`TTLBITS'd1;
+					end else if (line_valid[0]) 
+					begin
+						ttl0<=`TTLBITS'd0;
+					end
+					if (line_miss[1] & ttl1!=`TTLBITS'd255)
+					begin
+						ttl1<=ttl1+`TTLBITS'd1;
+					end else if (line_valid[1]) 
+					begin
+						ttl1<=`TTLBITS'd1;
+					end
+					if (line_miss[2] & ttl2!=`TTLBITS'd255)
+					begin
+						ttl2<=ttl2+`TTLBITS'd1;
+					end else if (line_valid[2]) 
+					begin
+						ttl2<=`TTLBITS'd0;
+					end
+					if (line_miss[3] & ttl3!=`TTLBITS'd255)
+					begin
+						ttl3<=ttl3+`TTLBITS'd1;
+					end else if (line_valid[3]) 
+					begin
+						ttl3<=`TTLBITS'd0;
+					end
 
+				end
 			end
-			r_line_fill	<= vfill;
+			r_dcache_req	<=dcache_rdreq|dcache_wrreq;
+			r_line_fill	<= v_fill;
 		end
 	end
 endmodule
