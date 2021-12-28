@@ -192,16 +192,15 @@ module	dcache_line(
 					begin
 						dpram_we	<=4'b0;
 						r_mem_addr	<={addrmsb1,dpram_waddr,2'b00};
-						dpram_waddr     <=dpram_waddr-`CACHEADDRBITS'd1;
 						r_mem_rdreq	<=1'b1;
 						cnt_burst	<=16'd0;
 					end else if (mem_valid)
 					begin
 						cnt_burst	<=cnt_burst+16'd1;
 						cnt_fill	<=cnt_fill+16'd1;
-						dpram_waddr	<=dpram_waddr+`CACHEADDRBITS'd1;
+						dpram_waddr	<=cnt_fill;
 						dpram_we	<=4'b1111;
-						if (write_request & (dpram_waddr==write_addr))	// in case the last cache request was a WRITE
+						if (write_request & (cnt_fill==write_addr))	// in case the last cache request was a WRITE
 						begin
 							write_request	<=1'b0;
 							dpram_datain	<=write_value;
@@ -249,7 +248,7 @@ module	dcache_line(
 						addrmsb2	<=addrmsb1;
 						addrmsb1	<=dcache_addr[`ADDRBITS-1:`CACHEADDRBITS+2];
 						v_dpram_waddr	=`CACHEADDRBITS'd0;
-						dpram_flushaddr	<=`CACHEADDRBITS'd0;
+						dpram_flushaddr	<=`CACHEADDRBITS'd0-`CACHEADDRBITS'd1;
 						cnt_fill	<=16'd0;
 						cnt_burst	<=mem_burstlen;
 						msr		<=dirty? MSR_FLUSH:MSR_FILL;
@@ -277,7 +276,7 @@ module	dcache_line(
 							r_mem_wrreq	<=1'b1;
 							cnt_burst	<=cnt_burst+16'd1;
 						end
-						r_mem_addr	<={addrmsb2,dpram_flushaddr,2'b00};
+						r_mem_addr	<={addrmsb2,cnt_fill,2'b00};
 						dpram_flushaddr	<=dpram_flushaddr+`CACHEADDRBITS'd1;
 					end
 				end

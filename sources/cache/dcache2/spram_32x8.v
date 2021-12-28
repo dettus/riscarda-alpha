@@ -22,28 +22,33 @@
 // (SPDX short identifier: BSD-1-Clause)
 
 
-module	spram_512x32
+module	spram_32x8
+#(
+parameter	DATABITS=8,
+parameter	ADDRBITS=5,
+parameter	MEMSIZE=2**ADDRBITS
+)
+
 (
-	input	[ 8:0]	addr,
-	output	[31:0]	dataout,
-	input	[31:0]	datain,
+	input	[ADDRBITS-1:0]	addr,
+	output	[DATABITS-1:0]	data_out,
+	input	[DATABITS-1:0]	data_in,
 	input		we,
 	input		clk
 );
-
-	reg	[31:0]	memblock[511:0];
-	reg		dataout;
+	reg	[DATABITS-1:0]	memblock[MEMSIZE-1:0];
+	reg		r_data_out;
+	assign	data_out=r_data_out;
 	always @(posedge clk)
 	begin
 		if (we)
 		begin
-			memblock[addr]<=datain;
-			$display("              BIG MEM>  WRITING %08X to %08X",datain,addr);
+			memblock[addr]<=data_in;
 		end
 	end
 	always	@(addr,memblock[addr])
 	begin
-		dataout<=memblock[addr];
+		r_data_out<=memblock[addr];
 	end
 endmodule
 
