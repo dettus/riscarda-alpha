@@ -109,7 +109,7 @@ parameter	CNTMISSBITS=8
 		if (!reset_n)
 		begin
 			r_line_valid	<=1'b0;
-			r_line_dirty	<=1'b1;
+			r_line_dirty	<=1'b0;
 			r_init		<=1'b1;
 			r_flush_cnt_miss	<='d0;
 		end else begin
@@ -142,14 +142,17 @@ parameter	CNTMISSBITS=8
 						end
 					end
 				5'b10010:begin	// flushing out
+						$display("flush mode read");
 						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS];
 						r_mem_addr	<={addrmsb,7'd0};
 						r_init		<=1'b0;
 						r_flush_cnt_miss	<='d0;
 					end
 				5'b10011:begin
+						$display("flush mode write");
 						r_line_dirty		<=flush_dirty;
 						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS];
+						r_mem_addr	<={dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS],7'd0};
 						r_init		<=1'b0;
 						r_flush_cnt_miss	<='d0;
 					end

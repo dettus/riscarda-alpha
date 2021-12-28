@@ -130,6 +130,8 @@ parameter	ADDRBITS=32
 	end
 
 	initial begin
+		$dumpfile("tb_dcache.vcd");
+		$dumpvars(0);
 		#0	reset_n<=1'b1;clk<=1'b0;
 			dcache_addr	<=32'h0;
 			dcache_in	<=32'h0;

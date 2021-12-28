@@ -375,6 +375,7 @@ parameter	BANKNUM=4
 						flush_addr_mem	<='d0;
 						flush_addr	<='d0;
 						flush_mode	<=v_flush_mode;
+						flush_write	<=!v_dirty;
 						msr		<=v_dirty? MSR_FLUSH_OUT:MSR_FILL;
 						r_mem_rdreq	<=!v_dirty;
 						r_dcache_busy	<=1'b1;
