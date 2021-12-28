@@ -31,7 +31,8 @@ parameter	LINENUM=4,
 parameter	LSBITS=2,
 parameter	CACHEADDRBITS=5,
 parameter	CACHESIZE=2**CACHEADDRBITS,
-parameter	CNTMISSBITS=8
+parameter	CNTMISSBITS=8,
+parameter	BANKNUM=4
 )
 (
 	// connection to the CPU
@@ -62,6 +63,7 @@ parameter	CNTMISSBITS=8
 
 
 	reg	[DATABITS-1:0]		r_dcache_out;	//
+	reg				r_dcache_valid;
 	reg	[ADDRBITS-1:0]		r_mem_addr;	//
 	reg	[DATABITS-1:0]		r_mem_in;	//
 	reg				r_mem_rdreq;
@@ -76,10 +78,16 @@ parameter	CNTMISSBITS=8
 	wire	[DATABITS-1:0]		line_out1;
 	wire	[DATABITS-1:0]		line_out2;
 	wire	[DATABITS-1:0]		line_out3;
+
+	wire	[CNTMISSBITS-1:0]	flush_cnt_miss0;
+	wire	[CNTMISSBITS-1:0]	flush_cnt_miss1;
+	wire	[CNTMISSBITS-1:0]	flush_cnt_miss2;
+	wire	[CNTMISSBITS-1:0]	flush_cnt_miss3;
 	
 	wire	[LINENUM-1:0]		line_valid;
 	wire	[LINENUM-1:0]		line_miss;
 	wire	[LINENUM-1:0]		line_dirty;
+	
 
 	reg	[LINENUM-1:0]		flush_mode;	
 	reg				flush_write;
@@ -97,6 +105,8 @@ parameter	CNTMISSBITS=8
 	reg	[CNTMISSBITS-1:0]	v_flush_cnt_miss01;
 	reg	[CNTMISSBITS-1:0]	v_flush_cnt_miss23;
 	reg				v_dirty;
+	reg				v_dirty01;
+	reg				v_dirty23;
 
 	reg	[15:0]			cnt_flush;
 	reg	[15:0]			cnt_burst;
@@ -117,7 +127,7 @@ parameter	CNTMISSBITS=8
 
 	always	@(dcache_addr[1:0],dcache_wordlen)
 	begin
-		case({dcache_wordlen,dcache_addr[LSBBITS-2:0]})
+		case({dcache_wordlen,dcache_addr[LSBITS-2:0]})
 			// bytes
 			4'b0000:	begin	byteenable<=4'b0001;end
 			4'b0001:	begin	byteenable<=4'b0010;end
@@ -147,10 +157,10 @@ parameter	CNTMISSBITS=8
 	always	@(flush_mode,flush_addr_mem,line_mem_addr0,line_mem_addr1,line_mem_addr2,line_mem_addr3)
 	begin
 		case (flush_mode)
-			4'b0001:	begin	r_mem_addr<={line_mem_addr0[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
-			4'b0010:	begin	r_mem_addr<={line_mem_addr1[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
-			4'b0100:	begin	r_mem_addr<={line_mem_addr2[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
-			4'b1000:	begin	r_mem_addr<={line_mem_addr3[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
+			4'b0001:	begin	r_mem_addr<={line_mem_addr0[ADDRBITS-1:CACHEADDRBITS+LSBITS],flush_addr_mem,2'b0};end
+			4'b0010:	begin	r_mem_addr<={line_mem_addr1[ADDRBITS-1:CACHEADDRBITS+LSBITS],flush_addr_mem,2'b0};end
+			4'b0100:	begin	r_mem_addr<={line_mem_addr2[ADDRBITS-1:CACHEADDRBITS+LSBITS],flush_addr_mem,2'b0};end
+			4'b1000:	begin	r_mem_addr<={line_mem_addr3[ADDRBITS-1:CACHEADDRBITS+LSBITS],flush_addr_mem,2'b0};end
 			default:	begin	r_mem_addr<='b0;end
 		endcase
 	end
@@ -170,7 +180,7 @@ parameter	CNTMISSBITS=8
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
-		.LSBBITS		(LSBBITS),
+		.LSBITS			(LSBITS),
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
@@ -192,7 +202,7 @@ parameter	CNTMISSBITS=8
 		.flush_addr		(flush_addr),
 		.flush_dirty		(flush_dirty),
 		
-		.mem_addr		(mem_addr0),
+		.mem_addr		(line_mem_addr0),
 		.line_in		(line_in),
 		.line_in_valid		(line_in_valid),
 
@@ -205,7 +215,7 @@ parameter	CNTMISSBITS=8
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
-		.LSBBITS		(LSBBITS),
+		.LSBITS			(LSBITS),
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
@@ -227,7 +237,7 @@ parameter	CNTMISSBITS=8
 		.flush_addr		(flush_addr),
 		.flush_dirty		(flush_dirty),
 		
-		.mem_addr		(mem_addr1),
+		.mem_addr		(line_mem_addr1),
 		.line_in		(line_in),
 		.line_in_valid		(line_in_valid),
 
@@ -240,7 +250,7 @@ parameter	CNTMISSBITS=8
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
-		.LSBBITS		(LSBBITS),
+		.LSBITS			(LSBITS),
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
@@ -262,7 +272,7 @@ parameter	CNTMISSBITS=8
 		.flush_addr		(flush_addr),
 		.flush_dirty		(flush_dirty),
 		
-		.mem_addr		(mem_addr2),
+		.mem_addr		(line_mem_addr2),
 		.line_in		(line_in),
 		.line_in_valid		(line_in_valid),
 
@@ -275,7 +285,7 @@ parameter	CNTMISSBITS=8
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
-		.LSBBITS		(LSBBITS),
+		.LSBITS			(LSBITS),
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
@@ -297,7 +307,7 @@ parameter	CNTMISSBITS=8
 		.flush_addr		(flush_addr),
 		.flush_dirty		(flush_dirty),
 		
-		.mem_addr		(mem_addr3),
+		.mem_addr		(line_mem_addr3),
 		.line_in		(line_in),
 		.line_in_valid		(line_in_valid),
 
@@ -328,21 +338,21 @@ parameter	CNTMISSBITS=8
 			begin
 				v_flush_mode01		=4'b0001;
 				v_flush_cnt_miss01	=flush_cnt_miss0;
-				v_dirty01		=line_dirty0;
+				v_dirty01		=line_dirty[0];
 			end else begin
 				v_flush_mode01=4'b0010;
-				v_flush_cnt_miss01=v_flush_cnt_miss1;
-				v_dirty01		=line_dirty1;
+				v_flush_cnt_miss01	=flush_cnt_miss1;
+				v_dirty01		=line_dirty[1];
 			end
 			if (flush_cnt_miss2>=flush_cnt_miss3)
 			begin
 				v_flush_mode23=4'b0100;
-				v_flush_cnt_miss23=v_flush_cnt_miss2;
-				v_dirty23		=line_dirty2;
+				v_flush_cnt_miss23	=flush_cnt_miss2;
+				v_dirty23		=line_dirty[2];
 			end else begin
 				v_flush_mode23=4'b1000;
-				v_flush_cnt_miss23=v_flush_cnt_miss3;
-				v_dirty23		=line_dirty3;
+				v_flush_cnt_miss23	=flush_cnt_miss3;
+				v_dirty23		=line_dirty[3];
 			end
 
 			if (v_flush_cnt_miss01>=v_flush_cnt_miss23)
@@ -366,7 +376,7 @@ parameter	CNTMISSBITS=8
 						flush_addr	<='d0;
 						flush_mode	<=v_flush_mode;
 						msr		<=v_dirty? MSR_FLUSH_OUT:MSR_FILL;
-						mem_rdreq	<=!v_dirty;
+						r_mem_rdreq	<=!v_dirty;
 						r_dcache_busy	<=1'b1;
 					end
 				end
@@ -390,7 +400,7 @@ parameter	CNTMISSBITS=8
 				end else begin
 					cnt_flush	<=cnt_flush+'d1;
 					cnt_burst	<=cnt_burst+'d1;
-					flush_mem_addr	<=cnt_flush;
+					flush_addr_mem	<=cnt_flush;
 					flush_addr	<=flush_addr+'d1;
 					r_mem_wrreq	<=1'b1;
 				end				
@@ -414,7 +424,7 @@ parameter	CNTMISSBITS=8
 					r_mem_rdreq	<=1'b0;
 					cnt_burst	<=cnt_burst+'d1;
 					cnt_flush	<=cnt_flush+'d1;
-					flush_mem_addr	<=flush_mem_addr+'d1;
+					flush_addr_mem	<=flush_addr_mem+'d1;
 					flush_addr	<=cnt_flush;
 					flush_write	<=1'b1;
 					line_in		<=mem_out;
