@@ -69,7 +69,7 @@ parameter	CACHESIZE=2**CACHEADDRBITS
 		addr<=flush_mode?flush_addr:dcache_addr;
 	end
 
-	always	@(flush_mode,write_enable,byteenable,line_in_valid)
+	always	@(flush_mode,flush_write,dcache_wrreq,line_miss,byteenable,line_in_valid)
 	begin
 		if (flush_mode)
 		begin

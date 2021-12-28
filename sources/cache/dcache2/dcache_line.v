@@ -75,18 +75,17 @@ parameter	CNTMISSBITS=8
 	assign	mem_addr	=r_mem_addr;
 	assign	flush_cnt_miss	=r_flush_cnt_miss;
 
-	dcache_memblock	DCACHE_MEMBLOCK0
-	#(
+	dcache_memblock #(
 		.DATABITS	(DATABITS),
 		.CACHEDATABITS	(CACHEDATABITS),
 		.CACHEADDRBITS	(CACHEADDRBITS),
 		.BANKNUM	(BANKNUM),
 		.CACHESIZE	(CACHESIZE)
-	)(
+	) DCACHE_MEMBLOCK0(
 		.flush_mode	(flush_mode),
 		
 		.dcache_in	(dcache_in),
-		.dcache_addr	(dcache_addr[CACHEADDRBITS+LSBITS:LSBITS]),
+		.dcache_addr	(dcache_addr[CACHEADDRBITS+LSBITS-1:LSBITS]),
 		.byteenable	(byteenable),
 		.line_miss	(r_line_miss),
 		.dcache_wrreq	(dcache_wrreq),
@@ -96,13 +95,13 @@ parameter	CNTMISSBITS=8
 		.line_in_valid	(line_in_valid),
 		.flush_write	(flush_write),
 	
-		.data_out	(data_out),
+		.data_out	(line_out),
 		.clk		(clk)
 	);
 
 	always	@(dcache_addr,addrmsb,r_init)
 	begin
-		r_line_miss<=r_init | (dcache_addr[ADDRBITS-CACHEADDRBITS-LSBBITS:CACHEADDRBITS+LSBBITS]!=addrmsb);
+		r_line_miss<=r_init | (dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS]!=addrmsb);
 	end
 	
 	always	@(posedge clk or negedge reset_n)
@@ -116,42 +115,42 @@ parameter	CNTMISSBITS=8
 			case ({r_line_miss,dcache_rdreq,dcache_wrreq,flush_mode,flush_write})
 				5'b01000:begin
 						r_line_valid	<=1'b1;
-						if (r_cnt_miss!=CNTMISSBITS'd0)
+						if (r_flush_cnt_miss!='d0)
 						begin
-							r_cnt_miss	<=r_cnt_miss-CNTMISSBITS'd1;
+							r_flush_cnt_miss	<=r_flush_cnt_miss-'d1;
 						end
 					end
 				5'b00100:begin
-						r_dirty		<=1'b1;
+						r_line_dirty		<=1'b1;
 						r_line_valid	<=1'b0;
-						if (r_cnt_miss!=CNTMISSBITS'd0)
+						if (r_flush_cnt_miss!='d0)
 						begin
-							r_cnt_miss	<=r_cnt_miss-CNTMISSBITS'd1;
+							r_flush_cnt_miss	<=r_flush_cnt_miss-'d1;
 						end
 					end
 				5'b10100:begin
-						if (r_cnt_miss!=CNTMISSBITS'd255)
+						if (r_flush_cnt_miss!='d255)
 						begin
-							r_cnt_miss	<=r_cnt_miss+CNTMISSBITS'd1;
+							r_flush_cnt_miss	<=r_flush_cnt_miss+'d1;
 						end
 					end
 				5'b11000:begin
-						if (r_cnt_miss!=CNTMISSBITS'd255)
+						if (r_flush_cnt_miss!='d255)
 						begin
-							r_cnt_miss	<=r_cnt_miss+CNTMISSBITS'd1;
+							r_flush_cnt_miss	<=r_flush_cnt_miss+'d1;
 						end
 					end
 				5'b10010:begin	// flushing out
-						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBBITS:CACHEADDRBITS+LSBBITS];
-						r_mem_addr	<={addrmsb,(CACHEADDRBITS+LSBBITS)'d0};
+						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS];
+						r_mem_addr	<={addrmsb,7'd0};
 						r_init		<=1'b0;
-						r_cnt_miss	<=CNTMISSBITS'd0;
+						r_flush_cnt_miss	<='d0;
 					end
 				5'b10011:begin
-						r_dirty		<=flush_dirty;
-						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBBITS:CACHEADDRBITS+LSBBITS];
+						r_line_dirty		<=flush_dirty;
+						addrmsb		<=dcache_addr[ADDRBITS-CACHEADDRBITS-LSBITS:CACHEADDRBITS+LSBITS];
 						r_init		<=1'b0;
-						r_cnt_miss	<=CNTMISSBITS'd0;
+						r_flush_cnt_miss	<='d0;
 					end
 				default:begin
 						r_line_valid	<=1'b0;
