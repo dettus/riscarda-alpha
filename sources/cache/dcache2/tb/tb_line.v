@@ -87,14 +87,76 @@ parameter	CNTMISSBITS=8
 	);
 
 	always	#5	clk<=!clk;
+	always	@(posedge clk)
+	begin
+		if (line_valid)
+		begin
+			$display("line_out: %08X",line_out);
+		end
+	end
 	
 	initial begin
 		$dumpfile("tb_line.vcd");
 		$dumpvars(0);
 		#0	reset_n<=1'b1;clk<=1'b0;
+			dcache_addr	<=32'h00000080;
+			dcache_in	<=32'hffffffff;
+			byteenable	<=4'b1111;
+			dcache_rdreq	<=1'b0;
+			dcache_wrreq	<=1'b0;
+			flush_mode	<=1'b0;
+			flush_write	<=1'b0;
+			flush_addr	<=5'd0;
+			flush_dirty	<=1'b0;
+			line_in		<=32'h0000affe;
+			line_in_valid	<=1'b0;
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
 		#8	$display("go!");
+
+		#10	dcache_addr	<=32'h00000080;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd0;flush_dirty<=1'b0;line_in<=32'h0fff0000;line_in_valid<=1'b0;flush_write<=1'b1;
+		#10	dcache_addr	<=32'h00000080;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd00;flush_dirty<=1'b0;line_in<=32'h0fff0000;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h00000084;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd01;flush_dirty<=1'b0;line_in<=32'h0fff0001;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h00000088;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd02;flush_dirty<=1'b0;line_in<=32'h0fff0002;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h0000008c;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd03;flush_dirty<=1'b0;line_in<=32'h0fff0003;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h00000090;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd04;flush_dirty<=1'b0;line_in<=32'h0fff0004;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h00000094;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd05;flush_dirty<=1'b0;line_in<=32'h0fff0005;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h00000098;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd06;flush_dirty<=1'b0;line_in<=32'h0fff0006;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000ac;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd07;flush_dirty<=1'b0;line_in<=32'h0fff0007;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000a0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd08;flush_dirty<=1'b0;line_in<=32'h0fff0008;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000a4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd09;flush_dirty<=1'b0;line_in<=32'h0fff0009;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000a8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd10;flush_dirty<=1'b0;line_in<=32'h0fff000a;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000ac;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd11;flush_dirty<=1'b0;line_in<=32'h0fff000b;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000b0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd12;flush_dirty<=1'b0;line_in<=32'h0fff000c;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000b4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd13;flush_dirty<=1'b0;line_in<=32'h0fff000d;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000b8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd14;flush_dirty<=1'b0;line_in<=32'h0fff000e;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000bc;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd15;flush_dirty<=1'b0;line_in<=32'h0fff000f;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000c0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd16;flush_dirty<=1'b0;line_in<=32'h0fff0010;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000c4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd17;flush_dirty<=1'b0;line_in<=32'h0fff0011;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000c8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd18;flush_dirty<=1'b0;line_in<=32'h0fff0012;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000cc;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd19;flush_dirty<=1'b0;line_in<=32'h0fff0013;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000d0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd20;flush_dirty<=1'b0;line_in<=32'h0fff0014;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000d4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd21;flush_dirty<=1'b0;line_in<=32'h0fff0015;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000d8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd22;flush_dirty<=1'b0;line_in<=32'h0fff0016;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000dc;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd23;flush_dirty<=1'b0;line_in<=32'h0fff0017;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000e0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd24;flush_dirty<=1'b0;line_in<=32'h0fff0018;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000e4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd25;flush_dirty<=1'b0;line_in<=32'h0fff0019;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000e8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd26;flush_dirty<=1'b0;line_in<=32'h0fff001a;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000ec;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd27;flush_dirty<=1'b0;line_in<=32'h0fff001b;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000f0;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd28;flush_dirty<=1'b0;line_in<=32'h0fff001c;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000f4;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd29;flush_dirty<=1'b0;line_in<=32'h0fff001d;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000f8;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd30;flush_dirty<=1'b0;line_in<=32'h0fff001e;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000fc;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b1;flush_addr<=5'd31;flush_dirty<=1'b0;line_in<=32'h0fff001f;line_in_valid<=1'b1;
+		#10	dcache_addr	<=32'h000000fc;dcache_in<=32'h0000001;byteenable<=4'b1111;dcache_rdreq<=1'b0;flush_mode<=1'b0;flush_addr<=5'd31;flush_dirty<=1'b0;line_in<=32'h0fff001f;line_in_valid<=1'b0;flush_write<=1'b0;
+
+		#1000	$display("read test");
+		#10	dcache_addr	<=32'h00000080;dcache_rdreq<=1'b1;
+		#10	dcache_addr	<=32'h00000084;dcache_rdreq<=1'b1;
+		#10	dcache_addr	<=32'h00000088;dcache_rdreq<=1'b1;
+		#10	dcache_addr	<=32'h0000008c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq	<=1'b0;
+		
+		
 
 		#1000	$finish();
 		

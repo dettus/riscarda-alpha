@@ -37,8 +37,6 @@ parameter	MEMSIZE=2**ADDRBITS
 	input		clk
 );
 	reg	[DATABITS-1:0]	memblock[MEMSIZE-1:0];
-	reg		r_data_out;
-	assign	data_out=r_data_out;
 	always @(posedge clk)
 	begin
 		if (we)
@@ -46,10 +44,7 @@ parameter	MEMSIZE=2**ADDRBITS
 			memblock[addr]<=data_in;
 		end
 	end
-	always	@(addr,memblock[addr])
-	begin
-		r_data_out<=memblock[addr];
-	end
+	assign data_out=memblock[addr];
 endmodule
 
 

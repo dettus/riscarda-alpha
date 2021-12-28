@@ -111,6 +111,7 @@ parameter	CNTMISSBITS=8
 			r_line_valid	<=1'b0;
 			r_line_dirty	<=1'b1;
 			r_init		<=1'b1;
+			r_flush_cnt_miss	<='d0;
 		end else begin
 			case ({r_line_miss,dcache_rdreq,dcache_wrreq,flush_mode,flush_write})
 				5'b01000:begin
