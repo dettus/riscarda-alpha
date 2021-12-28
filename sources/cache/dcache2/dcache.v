@@ -23,7 +23,7 @@
 //
 //
 
-module dcache_line
+module dcache
 #(
 parameter	DATABITS=32,
 parameter	ADDRBITS=32,
@@ -41,8 +41,9 @@ parameter	CNTMISSBITS=8
 	output				dcache_valid,	//
 	input				dcache_rdreq,
 	input				dcache_wrreq,
-
 	input	[1:0]			dcache_wordlen,		// 0=byte, 1=halfword, 2=word
+
+	output				dcache_busy,
 
 	// connection to the big memory
 	output	[ADDRBITS-1:0]		mem_addr,	//
@@ -57,7 +58,7 @@ parameter	CNTMISSBITS=8
 	input				reset_n,
 	input				clk
 );
-
+	reg				r_dcache_busy;
 
 
 	reg	[DATABITS-1:0]		r_dcache_out;	//
@@ -90,6 +91,18 @@ parameter	CNTMISSBITS=8
 	reg				line_in_valid;
 	reg	[CACHEADDRBITS-1:0]	flush_addr_mem;
 
+	reg	[LINENUM-1:0]		v_flush_mode;
+	reg	[LINENUM-1:0]		v_flush_mode01;
+	reg	[LINENUM-1:0]		v_flush_mode23;
+	reg	[CNTMISSBITS-1:0]	v_flush_cnt_miss01;
+	reg	[CNTMISSBITS-1:0]	v_flush_cnt_miss23;
+	reg				v_dirty;
+
+	reg	[15:0]			cnt_flush;
+	reg	[15:0]			cnt_burst;
+
+	localparam [1:0]	MSR_VALID=2'b00,MSR_FLUSH_OUT=2'b01,MSR_FILL=2'b10;	
+	reg	[1:0]			msr;
 	
 
 	assign	dcache_out=	r_dcache_out;
@@ -97,7 +110,9 @@ parameter	CNTMISSBITS=8
 	assign	mem_rdreq=	r_mem_rdreq;
 	assign	mem_wrreq=	r_mem_wrreq;
 
-	
+	assign	dcache_busy=	r_dcache_busy;
+
+
 
 
 	always	@(dcache_addr[1:0],dcache_wordlen)
@@ -125,18 +140,18 @@ parameter	CNTMISSBITS=8
 			4'b0010:	begin	r_dcache_out<=line_out1;r_dcache_valid<=1'b1;end
 			4'b0100:	begin	r_dcache_out<=line_out2;r_dcache_valid<=1'b1;end
 			4'b1000:	begin	r_dcache_out<=line_out3;r_dcache_valid<=1'b1;end
-			default:	begin	r_dcache_out<=DATABITS'h0;r_dcache_valid<=1'b0;end
+			default:	begin	r_dcache_out<='h0;r_dcache_valid<=1'b0;end
 		endcase
 	end
 
 	always	@(flush_mode,flush_addr_mem,line_mem_addr0,line_mem_addr1,line_mem_addr2,line_mem_addr3)
 	begin
 		case (flush_mode)
-			4'b0001:	begin	r_mem_addr<={line_mem_addr0[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,LSBBITS'b0};end
-			4'b0010:	begin	r_mem_addr<={line_mem_addr1[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,LSBBITS'b0};end
-			4'b0100:	begin	r_mem_addr<={line_mem_addr2[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,LSBBITS'b0};end
-			4'b1000:	begin	r_mem_addr<={line_mem_addr3[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,LSBBITS'b0};end
-			default:	begin	r_mem_addr<=ADDRBITS'b0;end
+			4'b0001:	begin	r_mem_addr<={line_mem_addr0[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
+			4'b0010:	begin	r_mem_addr<={line_mem_addr1[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
+			4'b0100:	begin	r_mem_addr<={line_mem_addr2[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
+			4'b1000:	begin	r_mem_addr<={line_mem_addr3[ADDRBITS-1:CACHEADDRBITS+LSBBITS],flush_addr_mem,'b0};end
+			default:	begin	r_mem_addr<='b0;end
 		endcase
 	end
 	
@@ -147,11 +162,11 @@ parameter	CNTMISSBITS=8
 			4'b0010:	begin	r_mem_in<=line_out1;end
 			4'b0100:	begin	r_mem_in<=line_out2;end
 			4'b1000:	begin	r_mem_in<=line_out3;end
-			default:	begin	r_mem_in<=DATABITS'h0;end
+			default:	begin	r_mem_in<='h0;end
 		endcase
 	end
 
-	dcache_line	DCACHE_LINE0
+	dcache_line	
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
@@ -159,7 +174,7 @@ parameter	CNTMISSBITS=8
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
-	)(
+	)DCACHE_LINE0(
 		.dcache_addr		(dcache_addr),
 		.dcache_in		(dcache_in),
 		.line_out		(line_out0),
@@ -186,7 +201,7 @@ parameter	CNTMISSBITS=8
 	);		
 
 
-	dcache_line	DCACHE_LINE1
+	dcache_line	
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
@@ -194,7 +209,7 @@ parameter	CNTMISSBITS=8
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
-	)(
+	)DCACHE_LINE1(
 		.dcache_addr		(dcache_addr),
 		.dcache_in		(dcache_in),
 		.line_out		(line_out1),
@@ -221,7 +236,7 @@ parameter	CNTMISSBITS=8
 	);		
 
 
-	dcache_line	DCACHE_LINE2
+	dcache_line	
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
@@ -229,7 +244,7 @@ parameter	CNTMISSBITS=8
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
-	)(
+	)DCACHE_LINE2(
 		.dcache_addr		(dcache_addr),
 		.dcache_in		(dcache_in),
 		.line_out		(line_out0),
@@ -256,7 +271,7 @@ parameter	CNTMISSBITS=8
 	);		
 
 
-	dcache_line	DCACHE_LINE3
+	dcache_line	
 	#(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
@@ -264,7 +279,7 @@ parameter	CNTMISSBITS=8
 		.CACHEADDRBITS		(CACHEADDRBITS),
 		.CACHESIZE		(CACHESIZE),
 		.CNTMISSBITS		(CNTMISSBITS)
-	)(
+	)DCACHE_LINE3(
 		.dcache_addr		(dcache_addr),
 		.dcache_in		(dcache_in),
 		.line_out		(line_out3),
@@ -297,6 +312,7 @@ parameter	CNTMISSBITS=8
 	begin
 		if (!reset_n)
 		begin
+			r_dcache_busy	<=1'b0;
 			r_mem_rdreq	<=1'b0;
 			r_mem_wrreq	<=1'b0;
 			flush_mode	<=4'b0000;
@@ -344,18 +360,66 @@ parameter	CNTMISSBITS=8
 				begin
 					if (dcache_rdreq | dcache_wrreq)
 					begin
+						cnt_flush	<=16'd0;
+						cnt_burst	<=16'd0;
+						flush_addr_mem	<='d0;
+						flush_addr	<='d0;
 						flush_mode	<=v_flush_mode;
 						msr		<=v_dirty? MSR_FLUSH_OUT:MSR_FILL;
+						mem_rdreq	<=!v_dirty;
+						r_dcache_busy	<=1'b1;
 					end
 				end
 			end
 			MSR_FLUSH_OUT:	begin
-				
-				msr	<=MSR_FILL;
+				if (cnt_flush==CACHESIZE)
+				begin
+					cnt_flush	<='d0;
+					cnt_burst	<='d0;
+					flush_addr_mem	<='d0;
+					flush_addr	<='d0;
+					r_dcache_busy	<=1'b0;
+					msr		<=MSR_FILL;
+					r_mem_rdreq	<=1'b0;
+					flush_write	<=1'b1;
+				end else if (cnt_burst==mem_burstlen)
+				begin
+					cnt_burst	<='d0;
+					r_mem_wrreq	<=1'b1;
+					flush_write	<=1'b0;
+				end else begin
+					cnt_flush	<=cnt_flush+'d1;
+					cnt_burst	<=cnt_burst+'d1;
+					flush_mem_addr	<=cnt_flush;
+					flush_addr	<=flush_addr+'d1;
+					r_mem_wrreq	<=1'b1;
+				end				
 			end
 			MSR_FILL: begin
-				flush_mode	<=4'b0000;	
-				msr	<=MSR_VALID;
+				if (cnt_flush==CACHESIZE)
+				begin
+					r_dcache_busy	<=1'b0;
+					flush_mode	<=4'b0000;	
+					msr		<=MSR_VALID;
+					r_mem_rdreq	<=1'b0;
+					flush_write	<=1'b0;
+					line_in_valid	<=1'b0;
+				end else if (cnt_burst==mem_burstlen)
+				begin
+					cnt_burst	<='d0;
+					r_mem_rdreq	<=1'b1;
+					flush_write	<=1'b1;
+					line_in_valid	<=1'b0;
+				end else if (mem_valid) begin
+					r_mem_rdreq	<=1'b0;
+					cnt_burst	<=cnt_burst+'d1;
+					cnt_flush	<=cnt_flush+'d1;
+					flush_mem_addr	<=flush_mem_addr+'d1;
+					flush_addr	<=cnt_flush;
+					flush_write	<=1'b1;
+					line_in		<=mem_out;
+					line_in_valid	<=1'b1;
+				end
 			end
 				
 			endcase
