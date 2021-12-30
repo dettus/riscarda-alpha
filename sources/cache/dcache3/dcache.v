@@ -29,7 +29,8 @@ parameter	CACHEADDRBITS=5,
 parameter	CACHESIZE=(2**CACHEADDRBITS),
 parameter	LINENUM=4,
 parameter	TTLBITS=8,
-parameter	MAXTTL='d255
+parameter	MAXTTL='d255,
+parameter	BANKNUM=4
 )
 (
 	// connection to the CPU core
@@ -130,7 +131,7 @@ parameter	MAXTTL='d255
 
 	always	@(dcache_wordlen,dcache_addr[1:0])
 	begin
-		case ({dcache_wordlen,dcache_addr[1:0]});
+		case ({dcache_wordlen,dcache_addr[1:0]})
 			// byte 
 			4'b0000:	begin	byteenable<=4'b0001;end	
 			4'b0001:	begin	byteenable<=4'b0010;end	
@@ -274,7 +275,7 @@ parameter	MAXTTL='d255
 
 	dcache_queue	#(
 		.DATABITS	(DATABITS),
-		.ADDRBITS	(ADDRBITS),	
+		.ADDRBITS	(ADDRBITS)
 	)	DCACHE_QUEUE (
 		.queue_in_data		(dcache_addr),
 		.queue_in_addr		(dcache_in),
@@ -454,7 +455,7 @@ parameter	MAXTTL='d255
 							flush_we		<=queue_out_wrreq;
 							flush_queue_rdreq	<=queue_out_rdreq;
 							flush_queue_wrreq	<=queue_out_wrreq;
-							case ({queue_out_wordlen,queue_out_addr[1:0]});
+							case ({queue_out_wordlen,queue_out_addr[1:0]})
 								// byte 
 								4'b0000:	begin	flush_byteenable<=4'b0001;end	
 								4'b0001:	begin	flush_byteenable<=4'b0010;end	

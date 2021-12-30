@@ -26,9 +26,8 @@ module	spram_32x8
 #(
 parameter	DATABITS=8,
 parameter	ADDRBITS=5,
-parameter	MEMSIZE=2**ADDRBITS
+parameter	MEMSIZE=(2**ADDRBITS)
 )
-
 (
 	input	[ADDRBITS-1:0]	addr,
 	output	[DATABITS-1:0]	data_out,
@@ -46,5 +45,3 @@ parameter	MEMSIZE=2**ADDRBITS
 	end
 	assign data_out=memblock[addr];
 endmodule
-
-
