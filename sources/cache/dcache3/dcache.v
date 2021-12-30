@@ -90,8 +90,8 @@ parameter	BANKNUM=4
 	reg			flush_we;
 	reg	[ADDRBITS-1:0]	flush_addr;
 	reg	[DATABITS-1:0]	flush_in;
-	reg			flush_queue_rdreq;
-	reg			flush_queue_wrreq;
+	reg			queue_mode;
+	reg	[BANKNUM-1:0]	queue_byteenable;
 
 	localparam	[2:0]	MSR_CACHING=3'b000,MSR_FLUSH=3'b001,MSR_FILL=3'b010,MSR_QUEUE=3'b011,MSR_WAIT=3'b100;
 	reg	[2:0]		msr;
@@ -187,9 +187,13 @@ parameter	BANKNUM=4
 		.flush_we		(flush_we),
 		.flush_addr		(flush_addr),
 		.flush_in		(flush_in),
-		.flush_byteenable	(flush_byteenable),
-		.flush_queue_rdreq	(flush_queue_rdreq),
-		.flush_queue_wrreq	(flush_queue_wrreq),
+
+		.queue_mode		(queue_mode),
+		.queue_addr		(queue_out_addr),
+		.queue_data		(queue_out_data),
+		.queue_rdreq		(queue_out_rdreq),
+		.queue_wrreq		(queue_out_wrreq),
+		.queue_byteenable	(queue_byteenable),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -215,9 +219,13 @@ parameter	BANKNUM=4
 		.flush_we		(flush_we),
 		.flush_addr		(flush_addr),
 		.flush_in		(flush_in),
-		.flush_byteenable	(flush_byteenable),
-		.flush_queue_rdreq	(flush_queue_rdreq),
-		.flush_queue_wrreq	(flush_queue_wrreq),
+
+		.queue_mode		(queue_mode),
+		.queue_addr		(queue_out_addr),
+		.queue_data		(queue_out_data),
+		.queue_rdreq		(queue_out_rdreq),
+		.queue_wrreq		(queue_out_wrreq),
+		.queue_byteenable	(queue_byteenable),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -243,9 +251,13 @@ parameter	BANKNUM=4
 		.flush_we		(flush_we),
 		.flush_addr		(flush_addr),
 		.flush_in		(flush_in),
-		.flush_byteenable	(flush_byteenable),
-		.flush_queue_rdreq	(flush_queue_rdreq),
-		.flush_queue_wrreq	(flush_queue_wrreq),
+
+		.queue_mode		(queue_mode),
+		.queue_addr		(queue_out_addr),
+		.queue_data		(queue_out_data),
+		.queue_rdreq		(queue_out_rdreq),
+		.queue_wrreq		(queue_out_wrreq),
+		.queue_byteenable	(queue_byteenable),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -271,13 +283,18 @@ parameter	BANKNUM=4
 		.flush_we		(flush_we),
 		.flush_addr		(flush_addr),
 		.flush_in		(flush_in),
-		.flush_byteenable	(flush_byteenable),
-		.flush_queue_rdreq	(flush_queue_rdreq),
-		.flush_queue_wrreq	(flush_queue_wrreq),
+
+		.queue_mode		(queue_mode),
+		.queue_addr		(queue_out_addr),
+		.queue_data		(queue_out_data),
+		.queue_rdreq		(queue_out_rdreq),
+		.queue_wrreq		(queue_out_wrreq),
+		.queue_byteenable	(queue_byteenable),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
 	);
+
 
 	dcache_queue	#(
 		.DATABITS	(DATABITS),
@@ -325,162 +342,146 @@ parameter	BANKNUM=4
 			cnt_flush		<='d0;
 			cnt_burst		<='d0;
 			flush_we		<=1'b0;
-			flush_queue_rdreq	<=1'b0;
-			flush_queue_wrreq	<=1'b0;
+			queue_mode		<=1'b0;
+			queue_byteenable	<=4'b0000;
 		end else begin
 			case (msr)
 				MSR_CACHING:	begin
-							flush_we		<=1'b0;
-							flush_queue_rdreq	<=1'b0;
-							flush_queue_wrreq	<=1'b0;
-							queue_pop		<=1'b0;
-							flush_queue_rdreq	<=1'b0;
-							cnt_flush		<='d0;
-							if (dcache_rdreq|dcache_wrreq)
-							begin
-								ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
-								ttl1	<=line_miss[1]?(ttl1+(ttl1!=MAXTTL)):(ttl1-(ttl1!='d0));
-								ttl2	<=line_miss[2]?(ttl2+(ttl2!=MAXTTL)):(ttl2-(ttl2!='d0));
-								ttl3	<=line_miss[3]?(ttl3+(ttl3!=MAXTTL)):(ttl3-(ttl3!='d0));
-							end
-							v_flush_mode		<=4'b0000;
 							if (queue_not_empty)
 							begin
+								queue_mode	<=1'b1;
+								msr		<=MSR_QUEUE;
+								case ({queue_out_wordlen,queue_out_addr[1:0]})
+									// byte 
+									4'b0000:	begin	queue_byteenable<=4'b0001;end	
+									4'b0001:	begin	queue_byteenable<=4'b0010;end	
+									4'b0010:	begin	queue_byteenable<=4'b0100;end	
+									4'b0011:	begin	queue_byteenable<=4'b1000;end	
+									// half word
+									4'b0100:	begin	queue_byteenable<=4'b0011;end	
+									4'b0110:	begin	queue_byteenable<=4'b1100;end	
+									// word
+									4'b1000:	begin	queue_byteenable<=4'b1111;end
+									// anything else: alignment error
+									default:	begin	queue_byteenable<=4'b0000;end
+								endcase
+							end else begin
+								if ((dcache_rdreq|dcache_wrreq) & line_miss!=4'b1111)	// TODO: move the TTL inside the line
+								begin
+									ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
+									ttl1	<=line_miss[1]?(ttl1+(ttl1!=MAXTTL)):(ttl1-(ttl1!='d0));
+									ttl2	<=line_miss[2]?(ttl2+(ttl2!=MAXTTL)):(ttl2-(ttl2!='d0));
+									ttl3	<=line_miss[3]?(ttl3+(ttl3!=MAXTTL)):(ttl3-(ttl3!='d0));
+								end
+							end
+						end
+				MSR_FLUSH:	begin
+							r_mem_rdreq	<=1'b0;
+							flush_we	<=1'b0;
+							if (cnt_flush==CACHESIZE)
+							begin
+								msr		<=MSR_FILL;
+								cnt_burst	<=mem_burstlen;
+								cnt_flush	<='d0;
+								r_mem_wrreq	<=1'b0;
+								flush_addr	<={queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
+								r_mem_addr	<={queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
+							end else begin
+								r_mem_addr	<=flush_addr;
+								flush_addr	<=flush_addr+'d4;
+								r_mem_wrreq	<=1'b1;
+								if (cnt_burst==mem_burstlen)
+								begin
+									cnt_burst	<='d0;
+								end else begin
+									cnt_burst	<=cnt_burst+'d1;	
+								end
+							end
+						end
+				MSR_FILL:	begin
+							r_mem_wrreq	<=1'b0;
+							if (cnt_flush==CACHESIZE)
+							begin
+								flush_mode	<=4'b0000;
+								msr		<=MSR_QUEUE;
+								flush_we	<=1'b0;	
+							end else if (cnt_burst==mem_burstlen) begin
+								flush_we	<=1'b0;	
+								cnt_burst	<='d0;
+
+							end else if (mem_out_valid) begin
+								r_mem_addr	<=r_mem_addr+'d4;
+								flush_addr	<=r_mem_addr;
+								flush_we	<=1'b1;
+								cnt_burst	<=cnt_burst+'d1;
+								cnt_flush	<=cnt_flush+'d1;
+							end else begin
+								flush_we	<=1'b0;
+							end
+						end
+				MSR_QUEUE:	begin
+							queue_mode	<=1'b0;
+							v_flush_mode	=4'b0000;
+							if (line_miss==4'b1111)
+							begin
+								queue_pop	<=1'b0;
 								if (ttl0>=ttl1)
 								begin
 									v_ttl01			=ttl0;
 									v_flush_mode01		=4'b0001;
-									v_memory_section01	=line_memory_section0;
 									v_dirty01		=line_dirty[0];
+									v_memory_section01	=line_memory_section0;
 								end else begin
 									v_ttl01			=ttl1;
 									v_flush_mode01		=4'b0010;
-									v_memory_section01	=line_memory_section1;
 									v_dirty01		=line_dirty[1];
-								end	
+									v_memory_section01	=line_memory_section1;
+								end
 								if (ttl2>=ttl3)
 								begin
 									v_ttl23			=ttl2;
 									v_flush_mode23		=4'b0100;
+									v_dirty23		=line_dirty[2];
 									v_memory_section23	=line_memory_section2;
-									v_dirty01		=line_dirty[2];
 								end else begin
 									v_ttl23			=ttl3;
 									v_flush_mode23		=4'b1000;
+									v_dirty23		=line_dirty[3];
 									v_memory_section23	=line_memory_section3;
-									v_dirty01		=line_dirty[3];
-								end	
+								end
 								if (v_ttl01>=v_ttl23)
 								begin
-									v_flush_mode		<=v_flush_mode01;
-									v_dirty			=v_dirty01;
+									v_flush_mode		=v_flush_mode01;
 									v_memory_section	=v_memory_section01;
+									v_dirty			=v_dirty01;
 								end else begin
-									v_flush_mode		<=v_flush_mode23;
-									v_dirty			=v_dirty23;
+									v_flush_mode		=v_flush_mode23;
 									v_memory_section	=v_memory_section23;
+									v_dirty			=v_dirty23;
 								end
-								msr		<=v_dirty?MSR_FLUSH:MSR_FILL;
-								flush_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS-1:7],7'b0000000};	// TODO: parameterize
+								case (v_flush_mode)	// TODO: move the ttl inside the line
+									4'b0001:	begin	ttl0<='d0;end
+									4'b0010:	begin	ttl1<='d0;end
+									4'b0100:	begin	ttl2<='d0;end
+									4'b1000:	begin	ttl3<='d0;end
+								endcase
+								cnt_flush	<='d0;
 								cnt_burst	<=mem_burstlen;
-								flush_we	<=1'b0;
+								flush_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
+								msr		<=v_dirty? MSR_FLUSH:MSR_FILL;
 								
+							end else begin
+								queue_pop	<=1'b1;
+								msr		<=MSR_CACHING;
+								if (queue_out_rdreq|queue_out_wrreq)	// TODO: move the ttl inside the line
+								begin
+									ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
+									ttl1	<=line_miss[1]?(ttl1+(ttl1!=MAXTTL)):(ttl1-(ttl1!='d0));
+									ttl2	<=line_miss[2]?(ttl2+(ttl2!=MAXTTL)):(ttl2-(ttl2!='d0));
+									ttl3	<=line_miss[3]?(ttl3+(ttl3!=MAXTTL)):(ttl3-(ttl3!='d0));
+								end
 							end
 							flush_mode	<=v_flush_mode;
-						end
-				MSR_FLUSH:	begin
-							flush_we		<=1'b0;
-							flush_queue_rdreq	<=1'b0;
-							r_mem_rdreq		<=1'b0;
-							if (cnt_flush==CACHESIZE)
-							begin
-								msr		<=MSR_FILL;
-								flush_addr	<={queue_out_addr[ADDRBITS-1:7],7'b0000000};	// TODO: parameterize
-								r_mem_addr	<={queue_out_addr[ADDRBITS-1:7],7'b0000000};	// TODO: parameterize
-								cnt_burst	<=mem_burstlen;
-								cnt_flush	<='d0;
-								r_mem_wrreq	<=1'b0;
-							end else begin
-								cnt_flush	<=cnt_flush+1'd1;
-								if (cnt_burst==mem_burstlen)
-								begin
-									cnt_burst	<=cnt_burst+1'd1;
-									r_mem_wrreq	<=1'b1;
-								end else begin
-									cnt_burst	<='d0;
-									r_mem_wrreq	<=1'b0;
-								end
-								r_mem_addr	<=flush_addr;
-								flush_addr	<=flush_addr+BANKNUM;
-							end
-						end
-				MSR_FILL:	begin
-							r_mem_wrreq		<=1'b0;
-							flush_queue_rdreq	<=1'b0;
-							queue_pop		<=1'b0;
-							if (cnt_flush==CACHESIZE)
-							begin
-								msr		<=MSR_QUEUE;
-								cnt_burst	<='d0;
-								cnt_flush	<='d0;
-								r_mem_rdreq	<=1'b0;
-								flush_we	<=1'b0;
-							end else if (cnt_burst==mem_burstlen) begin
-								r_mem_rdreq	<=1'b1;
-								cnt_burst	<='d0;
-								r_mem_rdreq	<=1'b1;
-								flush_we	<=1'b0;
-								flush_addr	<=r_mem_addr;
-							end else begin
-								if (mem_out_valid)
-								begin
-									flush_in		<=mem_in;
-									flush_byteenable	<=4'b1111;
-									flush_addr		<=r_mem_addr;
-									r_mem_addr		<=r_mem_addr+BANKNUM;
-									flush_we		<=1'b1;
-									cnt_burst		<=cnt_burst+'d1;
-									cnt_flush		<=cnt_flush+'d1;
-								end else begin
-									flush_we		<=1'b0;
-								end
-							end
-							
-						end
-				MSR_QUEUE:	begin
-							case (flush_mode)
-								4'b0001:	begin	ttl0<='d0;end
-								4'b0010:	begin	ttl1<='d0;end
-								4'b0100:	begin	ttl2<='d0;end
-								4'b1000:	begin	ttl3<='d0;end
-							endcase
-							queue_pop		<=1'b1;
-							msr			<=MSR_WAIT;
-							flush_addr		<=queue_out_addr;
-							flush_in		<=queue_out_data;
-							flush_we		<=queue_out_wrreq;
-							flush_queue_rdreq	<=queue_out_rdreq;
-							flush_queue_wrreq	<=queue_out_wrreq;
-							case ({queue_out_wordlen,queue_out_addr[1:0]})
-								// byte 
-								4'b0000:	begin	flush_byteenable<=4'b0001;end	
-								4'b0001:	begin	flush_byteenable<=4'b0010;end	
-								4'b0010:	begin	flush_byteenable<=4'b0100;end	
-								4'b0011:	begin	flush_byteenable<=4'b1000;end	
-								// half word
-								4'b0100:	begin	flush_byteenable<=4'b0011;end	
-								4'b0110:	begin	flush_byteenable<=4'b1100;end	
-								// word
-								4'b1000:	begin	flush_byteenable<=4'b1111;end
-								default:	begin	flush_byteenable<=4'b0000;end
-							endcase
-
-						end
-				MSR_WAIT:	begin
-							msr		<=MSR_CACHING;
-							flush_we	<=1'b0;
-							flush_mode	<='b0;
-							queue_pop	<=1'b0;
 						end
 			endcase
 		end
