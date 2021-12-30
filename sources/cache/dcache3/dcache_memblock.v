@@ -43,6 +43,7 @@ parameter	BANKDATABITS=(DATABITS/BANKNUM)
 	input	[ADDRBITS-1:0]		flush_addr,
 	input	[DATABITS-1:0]		flush_in,
 	input				flush_we,
+	input	[BANKNUM-1:0]		flush_byteenable,
 
 	// system control lines
 	input				reset_n,
@@ -59,7 +60,7 @@ parameter	BANKDATABITS=(DATABITS/BANKNUM)
 	assign	writeenables[2]=flush_mode?(flush_we&flush_byteenable[2]):(we&byteenable[2]);
 	assign	writeenables[3]=flush_mode?(flush_we&flush_byteenable[3]):(we&byteenable[3]);
 
-	assign	int_addr=flush_addr?flush_addr:addr;
+	assign	int_addr=flush_mode?flush_addr:addr;
 	assign	int_data=flush_mode?flush_in:data_in;
 
 	spram_32x8	SPRAM0

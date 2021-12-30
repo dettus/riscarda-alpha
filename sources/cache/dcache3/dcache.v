@@ -69,7 +69,8 @@ parameter	BANKNUM=4
 
 	wire	[LINENUM-1:0]	line_out_valid;
 	wire	[LINENUM-1:0]	line_miss;
-	wire	[BANKNUM-1:0]	flush_byteenable;
+	wire	[LINENUM-1:0]	line_dirty;
+	reg	[BANKNUM-1:0]	flush_byteenable;
 	reg	[BANKNUM-1:0]	byteenable;
 
 	reg	[DATABITS-1:0]	m_dcache_out;
@@ -80,6 +81,7 @@ parameter	BANKNUM=4
 	wire	[ADDRBITS-1:0]	queue_out_addr;
 	wire			queue_out_rdreq;
 	wire			queue_out_wrreq;
+	wire	[1:0]		queue_out_wordlen;
 
 	reg			queue_pop;
 	wire			queue_not_empty;
@@ -87,9 +89,12 @@ parameter	BANKNUM=4
 
 	reg			flush_we;
 	reg	[ADDRBITS-1:0]	flush_addr;
+	reg	[DATABITS-1:0]	flush_in;
+	reg			flush_queue_rdreq;
+	reg			flush_queue_wrreq;
 
-	localparam	[1:0]	MSR_CACHING=2'b00,MSR_FLUSHING=2'b01,MSR_FILL=2'b10,MSR_QUEUE=2'b11;
-	reg	[1:0]		msr;
+	localparam	[2:0]	MSR_CACHING=3'b000,MSR_FLUSH=3'b001,MSR_FILL=3'b010,MSR_QUEUE=3'b011,MSR_WAIT=3'b100;
+	reg	[2:0]		msr;
 
 	reg	[TTLBITS-1:0]	ttl0;
 	reg	[TTLBITS-1:0]	ttl1;
@@ -117,6 +122,7 @@ parameter	BANKNUM=4
 	reg	[ADDRBITS-1:0]		r_mem_addr;
 	reg				r_mem_rdreq;
 	reg				r_mem_wrreq;
+
 
 
 	
@@ -277,8 +283,8 @@ parameter	BANKNUM=4
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS)
 	)	DCACHE_QUEUE (
-		.queue_in_data		(dcache_addr),
-		.queue_in_addr		(dcache_in),
+		.queue_in_data		(dcache_in),
+		.queue_in_addr		(dcache_addr),
 		.queue_in_rdreq		(dcache_rdreq),
 		.queue_in_wrreq		(dcache_wrreq),
 		.queue_in_wordlen	(dcache_wordlen),
@@ -375,12 +381,12 @@ parameter	BANKNUM=4
 									v_memory_section	=v_memory_section23;
 								end
 								msr		<=v_dirty?MSR_FLUSH:MSR_FILL;
-								flush_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS:7],7'b0000000};	// TODO: parameterize
+								flush_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS-1:7],7'b0000000};	// TODO: parameterize
 								cnt_burst	<=mem_burstlen;
 								flush_we	<=1'b0;
 								
 							end
-							r_flush_mode	<=v_flush_mode;
+							flush_mode	<=v_flush_mode;
 						end
 				MSR_FLUSH:	begin
 							flush_we		<=1'b0;
@@ -396,7 +402,7 @@ parameter	BANKNUM=4
 								r_mem_wrreq	<=1'b0;
 							end else begin
 								cnt_flush	<=cnt_flush+1'd1;
-								if (cnt_burst==mem_burst_len)
+								if (cnt_burst==mem_burstlen)
 								begin
 									cnt_burst	<=cnt_burst+1'd1;
 									r_mem_wrreq	<=1'b1;
@@ -419,14 +425,14 @@ parameter	BANKNUM=4
 								cnt_flush	<='d0;
 								r_mem_rdreq	<=1'b0;
 								flush_we	<=1'b0;
-							end else if (cnt_flush==mem_burstlen) begin
+							end else if (cnt_burst==mem_burstlen) begin
 								r_mem_rdreq	<=1'b1;
 								cnt_burst	<='d0;
 								r_mem_rdreq	<=1'b1;
 								flush_we	<=1'b0;
 								flush_addr	<=r_mem_addr;
 							end else begin
-								if (mem_valid)
+								if (mem_out_valid)
 								begin
 									flush_in		<=mem_in;
 									flush_byteenable	<=4'b1111;
@@ -449,7 +455,7 @@ parameter	BANKNUM=4
 								4'b1000:	begin	ttl3<='d0;end
 							endcase
 							queue_pop		<=1'b1;
-							msr			<=MSR_CACHING;
+							msr			<=MSR_WAIT;
 							flush_addr		<=queue_out_addr;
 							flush_in		<=queue_out_data;
 							flush_we		<=queue_out_wrreq;
@@ -469,6 +475,12 @@ parameter	BANKNUM=4
 								default:	begin	flush_byteenable<=4'b0000;end
 							endcase
 
+						end
+				MSR_WAIT:	begin
+							msr		<=MSR_CACHING;
+							flush_we	<=1'b0;
+							flush_mode	<='b0;
+							queue_pop	<=1'b0;
 						end
 			endcase
 		end

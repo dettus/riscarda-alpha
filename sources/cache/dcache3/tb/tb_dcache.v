@@ -123,7 +123,14 @@ parameter	ADDRBITS=32
 	always	#5	clk<=!clk;
 
 	initial begin
+		$dumpfile("tb_dcache.vcd");
+		$dumpvars(0);
 		#0	reset_n<=1'b1;clk<=1'b0;
+			dcache_addr<=32'h00000000;
+			dcache_in<=32'h0;
+			dcache_wrreq<=1'b0;
+			dcache_rdreq<=1'b0;
+			dcache_wordlen<=2'b0;
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
 		#8	$display("go");
@@ -132,7 +139,7 @@ parameter	ADDRBITS=32
 		#10	dcache_addr<=32'h00000080;dcache_in<=32'h0fff0001;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 		#10	dcache_addr<=32'h00000084;dcache_in<=32'h0fff0002;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 		#10	dcache_wrreq<=1'b0;
-		#10	dcache_addr<=32'h00000088;dcache_in<=32'h0fff0003;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#2000	dcache_addr<=32'h00000088;dcache_in<=32'h0fff0003;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 		#10	dcache_addr<=32'h0000008c;dcache_in<=32'h0fff0004;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 
 		#10	dcache_addr<=32'h00000090;dcache_in<=32'h0fff0005;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
@@ -140,6 +147,17 @@ parameter	ADDRBITS=32
 		#10	dcache_addr<=32'h00000098;dcache_in<=32'h0fff0007;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 		#10	dcache_addr<=32'h0000009c;dcache_in<=32'h0fff0008;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
 		#10	dcache_wrreq<=1'b0;
+		#1000	$display("read test. expecting 0fff0001...0fff0008");
+		#10	dcache_addr<=32'h00000080;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000084;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000088;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000008c;dcache_rdreq<=1'b1;
+		
+		#10	dcache_addr<=32'h00000090;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000094;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000098;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000009c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
 		
 
 

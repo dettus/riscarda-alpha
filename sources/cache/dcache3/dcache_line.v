@@ -65,10 +65,10 @@ parameter	BANKNUM=4
 	assign	lsb_addr					=dcache_addr[CACHEADDRBITS+2-1:2];
 	assign	msb_addr					=dcache_addr[DATABITS-1:CACHEADDRBITS+2];
 	assign	v_line_miss					=(msb_addr!=r_memory_section)|r_init;
-	assign	line_miss					=r_line_miss;
+	assign	line_miss					=v_line_miss;
 	assign	line_dirty					=r_line_dirty;
 	assign	line_out_valid					=flush_mode?flush_queue_rdreq:(!v_line_miss & dcache_rdreq);	// TODO: add a flush_mode & queue
-	assign	line_memory_section[DATABITS:CACHEADDRBITS+2]	=r_memory_section;
+	assign	line_memory_section[DATABITS-1:CACHEADDRBITS+2]	=r_memory_section;
 	assign	line_memory_section[CACHEADDRBITS+2-1:0]	='b0;
 	
 
@@ -85,7 +85,7 @@ parameter	BANKNUM=4
 		.byteenable		(byteenable),
 
 		.flush_mode		(flush_mode),
-		.flush_addr		(flush_addr),
+		.flush_addr		(flush_addr[CACHEADDRBITS+2-1:2]),
 		.flush_in		(flush_in),
 		.flush_we		(flush_we),
 		.flush_byteenable	(flush_byteenable),
@@ -109,10 +109,10 @@ parameter	BANKNUM=4
 				if (flush_we)
 				begin
 					r_line_dirty		<=!flush_queue_wrreq;
-					r_memory_section	<=flush_addr[DATABITS-1:CACHEADDRBITS+2];
+					r_memory_section	<=flush_addr[ADDRBITS-1:CACHEADDRBITS+2];
 				end
 			end else begin
-				if (dcache_wrreq)
+				if (dcache_wrreq & !v_line_miss)
 				begin
 					r_line_dirty		<=!r_init;
 				end	
