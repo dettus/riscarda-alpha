@@ -348,9 +348,9 @@ parameter	BANKNUM=4
 			case (msr)
 				MSR_CACHING:	begin
 							queue_pop	<=1'b0;
+							queue_mode	<=queue_not_empty;
 							if (queue_not_empty)
 							begin
-								queue_mode	<=1'b1;
 								msr		<=MSR_QUEUE;
 								case ({queue_out_wordlen,queue_out_addr[1:0]})
 									// byte 
@@ -404,6 +404,7 @@ parameter	BANKNUM=4
 							if (cnt_flush==CACHESIZE)
 							begin
 								flush_mode	<=4'b0000;
+								queue_mode	<=queue_not_empty;
 								msr		<=MSR_QUEUE;
 								flush_we	<=1'b0;	
 							end else if (cnt_burst==mem_burstlen) begin
@@ -472,7 +473,7 @@ parameter	BANKNUM=4
 								msr		<=v_dirty? MSR_FLUSH:MSR_FILL;
 							end else begin
 								queue_pop	<=queue_not_empty;
-								msr		<=MSR_CACHING;
+								msr		<=MSR_WAIT;
 								if (queue_out_rdreq|queue_out_wrreq)	// TODO: move the ttl inside the line
 								begin
 									ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
@@ -482,6 +483,12 @@ parameter	BANKNUM=4
 								end
 							end
 							flush_mode	<=v_flush_mode;
+						end
+				MSR_WAIT:	begin
+							queue_pop	<=1'b0;
+							queue_mode	<=1'b0;
+							flush_mode	<='b0;
+							msr		<=MSR_CACHING;
 						end
 			endcase
 		end
