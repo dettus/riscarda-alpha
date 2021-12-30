@@ -54,10 +54,10 @@ parameter	BANKDATABITS=(DATABITS/BANKNUM)
 	wire	[DATABITS-1:0]	int_data;
 	
 
-	assign	writeenables[0]=flush_mode?flush_we:(we&byteenable[0]);
-	assign	writeenables[1]=flush_mode?flush_we:(we&byteenable[1]);
-	assign	writeenables[2]=flush_mode?flush_we:(we&byteenable[2]);
-	assign	writeenables[3]=flush_mode?flush_we:(we&byteenable[3]);
+	assign	writeenables[0]=flush_mode?(flush_we&flush_byteenable[0]):(we&byteenable[0]);
+	assign	writeenables[1]=flush_mode?(flush_we&flush_byteenable[1]):(we&byteenable[1]);
+	assign	writeenables[2]=flush_mode?(flush_we&flush_byteenable[2]):(we&byteenable[2]);
+	assign	writeenables[3]=flush_mode?(flush_we&flush_byteenable[3]):(we&byteenable[3]);
 
 	assign	int_addr=flush_addr?flush_addr:addr;
 	assign	int_data=flush_mode?flush_in:data_in;

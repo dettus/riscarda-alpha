@@ -37,6 +37,7 @@ parameter	BANKNUM=4
 	output	[DATABITS-1:0]	line_out,
 	output			line_out_valid,
 	input	[BANKNUM-1:0]	byteenable,
+	output	[ADDRBITS-1:0]	line_memory_section,
 
 	// connection to the flush controller
 	output			line_miss,
@@ -45,10 +46,13 @@ parameter	BANKNUM=4
 	input			flush_we,
 	input	[ADDRBITS-1:0]	flush_addr,
 	input	[DATABITS-1:0]	flush_in,
+	input	[BANKNUM-1:0]	flush_byteenable,
+	input			flush_queue_rdreq,
+	input			flush_queue_wrreq,
 
 	// system control lines
-	input				reset_n,
-	input				clk
+	input			reset_n,
+	input			clk
 );
 
 	wire					v_line_miss;	
@@ -58,12 +62,15 @@ parameter	BANKNUM=4
 	reg					r_line_dirty;
 	reg					r_init;			// after a reset, this one is =1
 
-	assign	lsb_addr	=dcache_addr[CACHEADDRBITS+2-1:2];
-	assign	msb_addr	=dcache_addr[DATABITS-1:CACHEADDRBITS+2];
-	assign	v_line_miss	=(msb_addr!=r_memory_section)|r_init;
-	assign	line_miss	=r_line_miss;
-	assign	line_dirty	=r_line_dirty;
-	assign	line_out_valid	=!v_line_miss & dcache_rdreq;
+	assign	lsb_addr					=dcache_addr[CACHEADDRBITS+2-1:2];
+	assign	msb_addr					=dcache_addr[DATABITS-1:CACHEADDRBITS+2];
+	assign	v_line_miss					=(msb_addr!=r_memory_section)|r_init;
+	assign	line_miss					=r_line_miss;
+	assign	line_dirty					=r_line_dirty;
+	assign	line_out_valid					=flush_mode?flush_queue_rdreq:(!v_line_miss & dcache_rdreq);	// TODO: add a flush_mode & queue
+	assign	line_memory_section[DATABITS:CACHEADDRBITS+2]	=r_memory_section;
+	assign	line_memory_section[CACHEADDRBITS+2-1:0]	='b0;
+	
 
 	dcache_memblock	
 	#(
@@ -81,6 +88,7 @@ parameter	BANKNUM=4
 		.flush_addr		(flush_addr),
 		.flush_in		(flush_in),
 		.flush_we		(flush_we),
+		.flush_byteenable	(flush_byteenable),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -100,7 +108,7 @@ parameter	BANKNUM=4
 				r_init		<=1'b0;
 				if (flush_we)
 				begin
-					r_line_dirty		<=1'b0;
+					r_line_dirty		<=!flush_queue_wrreq;
 					r_memory_section	<=flush_addr[DATABITS-1:CACHEADDRBITS+2];
 				end
 			end else begin

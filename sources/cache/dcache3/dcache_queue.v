@@ -34,12 +34,14 @@ parameter	QUEUESIZE=(2**QUEUECNTBITS)
 	input	[ADDRBITS-1:0]	queue_in_addr,
 	input			queue_in_rdreq,
 	input			queue_in_wrreq,
+	input	[1:0]		queue_in_wordlen,
 
 
 	output	[DATABITS-1:0]	queue_out_data,
 	output	[ADDRBITS-1:0]	queue_out_addr,
 	output			queue_out_rdreq,
 	output			queue_out_wrreq,
+	output	[1:0]		queue_out_wordlen,
 	
 	input			queue_push,
 	input			queue_pop,
@@ -52,17 +54,18 @@ parameter	QUEUESIZE=(2**QUEUECNTBITS)
 	reg	[QUEUECNTBITS-1:0]	inaddr;
 	reg	[QUEUECNTBITS-1:0]	outaddr;
 	
-	reg	[DATABITS+ADDRBITS+1+1-1:0]	queue_memory[QUEUESIZE-1:0];
-	wire	[DATABITS+ADDRBITS+1+1-1:0]	queue_out;
+	reg	[DATABITS+ADDRBITS+2+1+1-1:0]	queue_memory[QUEUESIZE-1:0];
+	wire	[DATABITS+ADDRBITS+2+1+1-1:0]	queue_out;
 
 	
 	assign	queue_not_empty	=(inaddr!=outaddr);
 
-	assign	queue_out	=queue_memory[outaddr];
-	assign	queue_out_data	=queue_out[31: 0];
-	assign	queue_out_addr	=queue_out[63:32];
-	assign	queue_out_rdreq	=queue_out[64];
-	assign	queue_out_wrreq	=queue_out[65];
+	assign	queue_out		=queue_memory[outaddr];
+	assign	queue_out_data		=queue_out[31: 0];
+	assign	queue_out_addr		=queue_out[63:32];
+	assign	queue_out_rdreq		=queue_out[64];
+	assign	queue_out_wrreq		=queue_out[65];
+	assign	queue_out_wordlen	=queue_out[67:66];
 
 	always	@(posedge clk or negedge reset_n)
 	begin
@@ -73,7 +76,7 @@ parameter	QUEUESIZE=(2**QUEUECNTBITS)
 		end else begin
 			if (queue_push)
 			begin
-				queue_memory[inaddr]	<={queue_in_wrreq,queue_in_rdreq,queue_in_addr,queue_in_data};
+				queue_memory[inaddr]	<={queue_in_wordlen,queue_in_wrreq,queue_in_rdreq,queue_in_addr,queue_in_data};
 				inaddr			<=inaddr+'d1;	
 			end
 			if (queue_pop)
