@@ -45,6 +45,7 @@ parameter	MEMSIZE=2**ADDRBITS
 		if (we)
 		begin
 			memblock[addr]<=data_in;
+
 		end
 	end
 	assign data_out=memblock[addr];
@@ -159,6 +160,93 @@ parameter	ADDRBITS=32
 		#10	dcache_addr<=32'h0000009c;dcache_rdreq<=1'b1;
 		#10	dcache_rdreq<=1'b0;
 		
+
+		#100	$display("write test. Writing 0fff1001..0fff1008 to 00000180....0000019c");
+		#10	dcache_addr<=32'h00000180;dcache_in<=32'h0fff1001;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_addr<=32'h00000184;dcache_in<=32'h0fff1002;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_wrreq<=1'b0;
+		#2000	dcache_addr<=32'h00000188;dcache_in<=32'h0fff1003;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_addr<=32'h0000018c;dcache_in<=32'h0fff1004;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+
+		#10	dcache_addr<=32'h00000190;dcache_in<=32'h0fff1005;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_addr<=32'h00000194;dcache_in<=32'h0fff1006;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_addr<=32'h00000198;dcache_in<=32'h0fff1007;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_addr<=32'h0000019c;dcache_in<=32'h0fff1008;dcache_wrreq<=1'b1;dcache_wordlen<=2'b10;
+		#10	dcache_wrreq<=1'b0;
+		#2000	$display("read test. expecting 0fff0001...0fff0008");
+		#10	dcache_addr<=32'h00000080;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000084;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000088;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000008c;dcache_rdreq<=1'b1;
+		
+		#10	dcache_addr<=32'h00000090;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000094;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000098;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000009c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#2000	$display("read test. expecting 0fff1001...0fff1008");
+		#10	dcache_addr<=32'h00000180;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000184;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000188;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000018c;dcache_rdreq<=1'b1;
+		
+		#10	dcache_addr<=32'h00000190;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000194;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000198;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000019c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		
+		#2000	$display("flush test");
+		#10	dcache_addr<=32'h00000000;dcache_in<=32'h11111111;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#4000	dcache_addr<=32'h00000100;dcache_in<=32'h22222222;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#4000	dcache_addr<=32'h00000200;dcache_in<=32'h33333333;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#4000	dcache_addr<=32'h00000280;dcache_in<=32'h44444444;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#6000	dcache_addr<=32'h00000300;dcache_in<=32'h55555555;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#10	dcache_addr<=32'h00000380;dcache_in<=32'h66666666;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#10000	$display("read test after flush. expecting 11111111-66666666");
+		#10	dcache_addr<=32'h00000000;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000100;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000200;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000280;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000300;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000380;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#10000	$display("read test. expecting 0fff0001...0fff0008");
+		#10	dcache_addr<=32'h00000080;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000084;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000088;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000008c;dcache_rdreq<=1'b1;
+		
+		#10	dcache_addr<=32'h00000090;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000094;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000098;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000009c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#10000	$display("read test. expecting 0fff1001...0fff1008");
+		#10	dcache_addr<=32'h00000180;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+		#4000	dcache_addr<=32'h00000184;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000188;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000018c;dcache_rdreq<=1'b1;
+		
+		#10	dcache_addr<=32'h00000190;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000194;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h00000198;dcache_rdreq<=1'b1;
+		#10	dcache_addr<=32'h0000019c;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
+	
 
 
 		#1000	$finish();

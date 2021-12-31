@@ -385,9 +385,17 @@ parameter	BANKNUM=4
 								cnt_burst	<=mem_burstlen;
 								cnt_flush	<='d0;
 								r_mem_wrreq	<=1'b0;
+								r_mem_in	<='h0;
 								flush_addr	<={queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
 								r_mem_addr	<={queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
 							end else begin
+								case (flush_mode)
+									4'b0001:	begin	r_mem_in<=line_out0;end
+									4'b0010:	begin	r_mem_in<=line_out1;end
+									4'b0100:	begin	r_mem_in<=line_out2;end
+									4'b1000:	begin	r_mem_in<=line_out3;end
+									default:	begin	r_mem_in<='h0;end
+								endcase
 								r_mem_addr	<=flush_addr;
 								flush_addr	<=flush_addr+'d4;
 								r_mem_wrreq	<=1'b1;
@@ -397,6 +405,7 @@ parameter	BANKNUM=4
 								end else begin
 									cnt_burst	<=cnt_burst+'d1;	
 								end
+								cnt_flush	<=cnt_flush+'d1;
 							end
 						end
 				MSR_FILL:	begin
@@ -407,6 +416,7 @@ parameter	BANKNUM=4
 								queue_mode	<=queue_not_empty;
 								msr		<=MSR_QUEUE;
 								flush_we	<=1'b0;	
+								r_mem_rdreq	<=1'b0;
 							end else if (cnt_burst==mem_burstlen) begin
 								flush_we	<=1'b0;	
 								cnt_burst	<='d0;
@@ -417,6 +427,7 @@ parameter	BANKNUM=4
 								flush_we	<=1'b1;
 								cnt_burst	<=cnt_burst+'d1;
 								cnt_flush	<=cnt_flush+'d1;
+								flush_in	<=mem_out;
 							end else begin
 								flush_we	<=1'b0;
 							end
