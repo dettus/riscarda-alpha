@@ -26,7 +26,9 @@ module	dcache_line
 parameter	DATABITS=32,
 parameter	ADDRBITS=32,
 parameter	CACHEADDRBITS=5,
-parameter	BANKNUM=4
+parameter	BANKNUM=4,
+parameter	TTLBITS=8,
+parameter	MAXTTL=(2**TTLBITS-1)
 )
 (
 	// connection to the CPU core
@@ -54,6 +56,8 @@ parameter	BANKNUM=4
 	input			queue_wrreq,
 	input	[BANKNUM-1:0]	queue_byteenable,
 
+	output	[TTLBITS-1:0]	line_ttl,
+
 	// system control lines
 	input			reset_n,
 	input			clk
@@ -63,13 +67,19 @@ parameter	BANKNUM=4
 	wire	[ADDRBITS-1:0]			int_addr;
 	wire	[CACHEADDRBITS-1:0]		lsb_addr;
 	wire	[DATABITS-CACHEADDRBITS-2-1:0]	msb_addr;
+	wire	[DATABITS-CACHEADDRBITS-2-1:0]	flush_msb_addr;
 	reg	[DATABITS-CACHEADDRBITS-2-1:0]	r_memory_section;	// to remember which memory section this cache line is from
 	reg					r_line_dirty;
 	reg					r_init;			// after a reset, this one is =1
+	wire					v_line_req;
+	reg	[TTLBITS-1:0]			r_line_ttl;
+
+	assign	line_ttl					=r_line_ttl;
 
 	assign	int_addr					=queue_mode?queue_addr:dcache_addr;
 	assign	lsb_addr					=int_addr[CACHEADDRBITS+2-1:2];
 	assign	msb_addr					=int_addr[DATABITS-1:CACHEADDRBITS+2];
+	assign	flush_msb_addr					=flush_addr[DATABITS-1:CACHEADDRBITS+2];
 	assign	v_line_miss					=(msb_addr!=r_memory_section)|r_init;
 	assign	line_miss					=v_line_miss;
 	assign	line_dirty					=r_line_dirty;
@@ -78,6 +88,7 @@ parameter	BANKNUM=4
 	assign	line_memory_section[CACHEADDRBITS+2-1:0]	='b0;
 	
 
+	assign v_line_req					=queue_mode?(queue_wrreq|queue_rdreq):(dcache_wrreq|dcache_rdreq);
 	dcache_memblock	
 	#(
 		.DATABITS		(DATABITS),
@@ -107,16 +118,31 @@ parameter	BANKNUM=4
 			r_line_dirty		<=1'b0;
 			r_init			<=1'b1;
 			r_memory_section	<='b0;
+			r_line_ttl		<='d0;
 		end else begin
 			if (flush_mode)
 			begin
 				r_init		<=1'b0;
+				r_line_ttl	<='d0;
 				if (flush_we)
 				begin
 					r_line_dirty		<=1'b0;
-					r_memory_section	<=flush_addr[ADDRBITS-1:CACHEADDRBITS+2];
+					r_memory_section	<=flush_msb_addr;
 				end
 			end else begin
+				
+				if (!v_line_miss)
+				begin
+					if (r_line_ttl!='d0 & v_line_req) 
+					begin
+						r_line_ttl<=r_line_ttl-'d1;
+					end
+				end else begin
+					if (r_line_ttl!=MAXTTL & v_line_req)
+					begin
+						r_line_ttl<=r_line_ttl+'d1;
+					end
+				end
 				if ((queue_mode?queue_wrreq:dcache_wrreq) & !v_line_miss)
 				begin
 					r_line_dirty		<=!r_init;

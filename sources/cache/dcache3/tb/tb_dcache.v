@@ -67,6 +67,7 @@ parameter	ADDRBITS=32
 	reg				dcache_rdreq;
 	reg				dcache_wrreq;
 	reg	[1:0]			dcache_wordlen;		// 0=byte; 1=halfword; 2=word
+	wire				dcache_ready;
 
 
 	wire	[ADDRBITS-1:0]	mem_addr;
@@ -91,6 +92,7 @@ parameter	ADDRBITS=32
 		.dcache_rdreq		(dcache_rdreq),
 		.dcache_wrreq		(dcache_wrreq),
 		.dcache_wordlen		(dcache_wordlen),
+		.dcache_ready		(dcache_ready),
 
 		.mem_addr		(mem_addr),
 		.mem_in			(mem_in),

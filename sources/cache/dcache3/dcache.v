@@ -29,7 +29,6 @@ parameter	CACHEADDRBITS=5,
 parameter	CACHESIZE=(2**CACHEADDRBITS),
 parameter	LINENUM=4,
 parameter	TTLBITS=8,
-parameter	MAXTTL='d255,
 parameter	BANKNUM=4
 )
 (
@@ -41,6 +40,7 @@ parameter	BANKNUM=4
 	input			dcache_rdreq,
 	input			dcache_wrreq,
 	input	[1:0]		dcache_wordlen,		// 00=byte, 01=half word, 10=word
+	output			dcache_ready,
 
 	// connection to the memory controller
 	output	[ADDRBITS-1:0]	mem_addr,
@@ -96,10 +96,10 @@ parameter	BANKNUM=4
 	localparam	[2:0]	MSR_CACHING=3'b000,MSR_FLUSH=3'b001,MSR_FILL=3'b010,MSR_QUEUE=3'b011,MSR_WAIT=3'b100;
 	reg	[2:0]		msr;
 
-	reg	[TTLBITS-1:0]	ttl0;
-	reg	[TTLBITS-1:0]	ttl1;
-	reg	[TTLBITS-1:0]	ttl2;
-	reg	[TTLBITS-1:0]	ttl3;
+	wire	[TTLBITS-1:0]	line_ttl0;
+	wire	[TTLBITS-1:0]	line_ttl1;
+	wire	[TTLBITS-1:0]	line_ttl2;
+	wire	[TTLBITS-1:0]	line_ttl3;
 
 	reg	[TTLBITS-1:0]	v_ttl01;
 	reg	[TTLBITS-1:0]	v_ttl23;
@@ -122,6 +122,7 @@ parameter	BANKNUM=4
 	reg	[ADDRBITS-1:0]		r_mem_addr;
 	reg				r_mem_rdreq;
 	reg				r_mem_wrreq;
+	reg				r_dcache_ready;
 
 
 
@@ -133,6 +134,7 @@ parameter	BANKNUM=4
 	assign	mem_addr		=r_mem_addr;
 	assign	mem_rdreq		=r_mem_rdreq;
 	assign	mem_wrreq		=r_mem_wrreq;
+	assign	dcache_ready		=r_dcache_ready;
 
 
 	always	@(dcache_wordlen,dcache_addr[1:0])
@@ -170,7 +172,8 @@ parameter	BANKNUM=4
 	dcache_line #(
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS),	
-		.CACHEADDRBITS	(CACHEADDRBITS)
+		.CACHEADDRBITS	(CACHEADDRBITS),
+		.TTLBITS	(TTLBITS)
 	) DCACHE_LINE0 (
 		.dcache_addr		(dcache_addr),
 		.dcache_rdreq		(dcache_rdreq),
@@ -195,6 +198,8 @@ parameter	BANKNUM=4
 		.queue_wrreq		(queue_out_wrreq),
 		.queue_byteenable	(queue_byteenable),
 
+		.line_ttl		(line_ttl0),
+
 		.reset_n		(reset_n),
 		.clk			(clk)
 	);
@@ -202,7 +207,8 @@ parameter	BANKNUM=4
 	dcache_line #(
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS),	
-		.CACHEADDRBITS	(CACHEADDRBITS)
+		.CACHEADDRBITS	(CACHEADDRBITS),
+		.TTLBITS	(TTLBITS)
 	) DCACHE_LINE1 (
 		.dcache_addr		(dcache_addr),
 		.dcache_rdreq		(dcache_rdreq),
@@ -227,6 +233,8 @@ parameter	BANKNUM=4
 		.queue_wrreq		(queue_out_wrreq),
 		.queue_byteenable	(queue_byteenable),
 
+		.line_ttl		(line_ttl1),
+
 		.reset_n		(reset_n),
 		.clk			(clk)
 	);
@@ -234,7 +242,8 @@ parameter	BANKNUM=4
 	dcache_line #(
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS),	
-		.CACHEADDRBITS	(CACHEADDRBITS)
+		.CACHEADDRBITS	(CACHEADDRBITS),
+		.TTLBITS	(TTLBITS)
 	) DCACHE_LINE2 (
 		.dcache_addr		(dcache_addr),
 		.dcache_rdreq		(dcache_rdreq),
@@ -259,6 +268,8 @@ parameter	BANKNUM=4
 		.queue_wrreq		(queue_out_wrreq),
 		.queue_byteenable	(queue_byteenable),
 
+		.line_ttl		(line_ttl2),
+
 		.reset_n		(reset_n),
 		.clk			(clk)
 	);
@@ -266,7 +277,8 @@ parameter	BANKNUM=4
 	dcache_line #(
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS),	
-		.CACHEADDRBITS	(CACHEADDRBITS)
+		.CACHEADDRBITS	(CACHEADDRBITS),
+		.TTLBITS	(TTLBITS)
 	) DCACHE_LINE3 (
 		.dcache_addr		(dcache_addr),
 		.dcache_rdreq		(dcache_rdreq),
@@ -290,6 +302,8 @@ parameter	BANKNUM=4
 		.queue_rdreq		(queue_out_rdreq),
 		.queue_wrreq		(queue_out_wrreq),
 		.queue_byteenable	(queue_byteenable),
+
+		.line_ttl		(line_ttl3),
 
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -329,10 +343,6 @@ parameter	BANKNUM=4
 			flush_we		<=1'b0;
 			flush_addr		<='d0;	
 			msr			<=MSR_CACHING;
-			ttl0			<='d0;
-			ttl1			<='d0;
-			ttl2			<='d0;
-			ttl3			<='d0;
 			flush_mode		<='b0;
 
 			r_mem_in		<='b0;
@@ -344,9 +354,11 @@ parameter	BANKNUM=4
 			flush_we		<=1'b0;
 			queue_mode		<=1'b0;
 			queue_byteenable	<=4'b0000;
+			r_dcache_ready		<=1'b1;
 		end else begin
 			case (msr)
 				MSR_CACHING:	begin
+							r_dcache_ready		<=1'b1;
 							queue_pop	<=1'b0;
 							queue_mode	<=queue_not_empty;
 							if (queue_not_empty)
@@ -366,15 +378,7 @@ parameter	BANKNUM=4
 									// anything else: alignment error
 									default:	begin	queue_byteenable<=4'b0000;end
 								endcase
-							end else begin
-								if ((dcache_rdreq|dcache_wrreq) & line_miss!=4'b1111)	// TODO: move the TTL inside the line
-								begin
-									ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
-									ttl1	<=line_miss[1]?(ttl1+(ttl1!=MAXTTL)):(ttl1-(ttl1!='d0));
-									ttl2	<=line_miss[2]?(ttl2+(ttl2!=MAXTTL)):(ttl2-(ttl2!='d0));
-									ttl3	<=line_miss[3]?(ttl3+(ttl3!=MAXTTL)):(ttl3-(ttl3!='d0));
-								end
-							end
+							end 
 						end
 				MSR_FLUSH:	begin
 							r_mem_rdreq	<=1'b0;
@@ -433,31 +437,32 @@ parameter	BANKNUM=4
 							end
 						end
 				MSR_QUEUE:	begin
+							r_dcache_ready		<=1'b0;
 							queue_mode	<=1'b0;
 							v_flush_mode	=4'b0000;
 							if (line_miss==4'b1111)
 							begin
 								queue_pop	<=1'b0;
-								if (ttl0>=ttl1)
+								if (line_ttl0>=line_ttl1)
 								begin
-									v_ttl01			=ttl0;
+									v_ttl01			=line_ttl0;
 									v_flush_mode01		=4'b0001;
 									v_dirty01		=line_dirty[0];
 									v_memory_section01	=line_memory_section0;
 								end else begin
-									v_ttl01			=ttl1;
+									v_ttl01			=line_ttl1;
 									v_flush_mode01		=4'b0010;
 									v_dirty01		=line_dirty[1];
 									v_memory_section01	=line_memory_section1;
 								end
-								if (ttl2>=ttl3)
+								if (line_ttl2>=line_ttl3)
 								begin
-									v_ttl23			=ttl2;
+									v_ttl23			=line_ttl2;
 									v_flush_mode23		=4'b0100;
 									v_dirty23		=line_dirty[2];
 									v_memory_section23	=line_memory_section2;
 								end else begin
-									v_ttl23			=ttl3;
+									v_ttl23			=line_ttl3;
 									v_flush_mode23		=4'b1000;
 									v_dirty23		=line_dirty[3];
 									v_memory_section23	=line_memory_section3;
@@ -472,26 +477,14 @@ parameter	BANKNUM=4
 									v_memory_section	=v_memory_section23;
 									v_dirty			=v_dirty23;
 								end
-								case (v_flush_mode)	// TODO: move the ttl inside the line
-									4'b0001:	begin	ttl0<='d0;end
-									4'b0010:	begin	ttl1<='d0;end
-									4'b0100:	begin	ttl2<='d0;end
-									4'b1000:	begin	ttl3<='d0;end
-								endcase
 								cnt_flush	<='d0;
 								cnt_burst	<=mem_burstlen;
 								flush_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
+								r_mem_addr	<=v_dirty?v_memory_section:{queue_out_addr[ADDRBITS-1:CACHEADDRBITS+2],7'b0000000};
 								msr		<=v_dirty? MSR_FLUSH:MSR_FILL;
 							end else begin
 								queue_pop	<=queue_not_empty;
 								msr		<=MSR_WAIT;
-								if (queue_out_rdreq|queue_out_wrreq)	// TODO: move the ttl inside the line
-								begin
-									ttl0	<=line_miss[0]?(ttl0+(ttl0!=MAXTTL)):(ttl0-(ttl0!='d0));
-									ttl1	<=line_miss[1]?(ttl1+(ttl1!=MAXTTL)):(ttl1-(ttl1!='d0));
-									ttl2	<=line_miss[2]?(ttl2+(ttl2!=MAXTTL)):(ttl2-(ttl2!='d0));
-									ttl3	<=line_miss[3]?(ttl3+(ttl3!=MAXTTL)):(ttl3-(ttl3!='d0));
-								end
 							end
 							flush_mode	<=v_flush_mode;
 						end
