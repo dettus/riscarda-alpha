@@ -83,13 +83,12 @@ parameter	MAXTTL=(2**TTLBITS-1)
 	icache_memblock
 	#(
 		.DATABITS		(DATABITS),
-		.ADDRBITS		(CACHEADDRBITS),
+		.ADDRBITS		(CACHEADDRBITS)
 	) ICACHE_MEMBLOCK0(
 		.addr			(lsb_addr),
 		.data_in		(queue_mode?queue_data:icache_in),
 		.data_out		(line_out),
 		.we			(!v_line_miss & (queue_mode?queue_wrreq:icache_wrreq)),
-		.byteenable		(queue_mode?queue_byteenable:byteenable),
 
 		.flush_mode		(flush_mode),
 		.flush_addr		(flush_addr[CACHEADDRBITS+2-1:2]),

@@ -28,7 +28,7 @@ parameter	ADDRBITS=32,
 parameter	CACHEADDRBITS=5,
 parameter	CACHESIZE=(2**CACHEADDRBITS),
 parameter	LINENUM=4,
-parameter	TTLBITS=8,
+parameter	TTLBITS=8
 )
 (
 	// connection to the CPU core
@@ -70,7 +70,6 @@ parameter	TTLBITS=8,
 	reg			m_icache_out_valid;
 
 
-	wire	[DATABITS-1:0]	queue_out_data;
 	wire	[ADDRBITS-1:0]	queue_out_addr;
 
 	reg			queue_pop;
@@ -135,7 +134,6 @@ parameter	TTLBITS=8,
 	) ICACHE_LINE0 (
 		.icache_addr		(icache_addr),
 		.icache_rdreq		(icache_rdreq),
-		.icache_in		(icache_in),
 		.line_out		(line_out0),
 		.line_out_valid		(line_out_valid[0]),
 		.line_memory_section	(line_memory_section0),
@@ -148,7 +146,6 @@ parameter	TTLBITS=8,
 
 		.queue_mode		(queue_mode),
 		.queue_addr		(queue_out_addr),
-		.queue_data		(queue_out_data),
 
 		.line_ttl		(line_ttl0),
 
@@ -164,7 +161,6 @@ parameter	TTLBITS=8,
 	) ICACHE_LINE1 (
 		.icache_addr		(icache_addr),
 		.icache_rdreq		(icache_rdreq),
-		.icache_in		(icache_in),
 		.line_out		(line_out1),
 		.line_out_valid		(line_out_valid[1]),
 		.line_memory_section	(line_memory_section1),
@@ -177,7 +173,6 @@ parameter	TTLBITS=8,
 
 		.queue_mode		(queue_mode),
 		.queue_addr		(queue_out_addr),
-		.queue_data		(queue_out_data),
 
 		.line_ttl		(line_ttl1),
 
@@ -193,7 +188,6 @@ parameter	TTLBITS=8,
 	) ICACHE_LINE2 (
 		.icache_addr		(icache_addr),
 		.icache_rdreq		(icache_rdreq),
-		.icache_in		(icache_in),
 		.line_out		(line_out2),
 		.line_out_valid		(line_out_valid[2]),
 		.line_memory_section	(line_memory_section2),
@@ -206,7 +200,6 @@ parameter	TTLBITS=8,
 
 		.queue_mode		(queue_mode),
 		.queue_addr		(queue_out_addr),
-		.queue_data		(queue_out_data),
 
 		.line_ttl		(line_ttl2),
 
@@ -222,7 +215,6 @@ parameter	TTLBITS=8,
 	) ICACHE_LINE3 (
 		.icache_addr		(icache_addr),
 		.icache_rdreq		(icache_rdreq),
-		.icache_in		(icache_in),
 		.line_out		(line_out3),
 		.line_out_valid		(line_out_valid[3]),
 		.line_memory_section	(line_memory_section3),
@@ -235,7 +227,6 @@ parameter	TTLBITS=8,
 
 		.queue_mode		(queue_mode),
 		.queue_addr		(queue_out_addr),
-		.queue_data		(queue_out_data),
 
 		.line_ttl		(line_ttl3),
 
@@ -248,10 +239,8 @@ parameter	TTLBITS=8,
 		.DATABITS	(DATABITS),
 		.ADDRBITS	(ADDRBITS)
 	)	icache_QUEUE (
-		.queue_in_data		(icache_in),
 		.queue_in_addr		(icache_addr),
 
-		.queue_out_data		(queue_out_data),
 		.queue_out_addr		(queue_out_addr),
 		
 		.queue_push		((line_miss==4'b1111) & (icache_rdreq|icache_wrreq)),

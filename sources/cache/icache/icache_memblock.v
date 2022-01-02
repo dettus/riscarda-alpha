@@ -22,11 +22,11 @@
 // (SPDX short identifier: BSD-1-Clause)
 
 
-module	dcache_memblock
+module	icache_memblock
 #(
 parameter	DATABITS=32,
 parameter	ADDRBITS=5,
-parameter	MEMSIZE=2**ADDRBITS,
+parameter	MEMSIZE=2**ADDRBITS
 )
 (
 	// connection to the CPU core
@@ -58,7 +58,7 @@ parameter	MEMSIZE=2**ADDRBITS,
 		.addr		(int_addr),
 		.data_out	(data_out),
 		.data_in	(int_data),
-		.we		(flush_mode?flush_addr:addr),
+		.we		(flush_mode&flush_mode_we),
 		.clk		(clk)
 	);
 
