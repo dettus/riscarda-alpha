@@ -30,13 +30,12 @@ module cache_line
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
 	parameter	TTLBITS=8,
 	parameter	MAXTTL=((2**TTLBITS)-1)
-
 )
 (
 
 
-	input	[ADDRBITS-1:0]		dcache_line_rdaddr,
-	input				dcache_line_rdreq,
+	input	[ADDRBITS-1:0]		dcache_line_rdaddr,		//
+	input				dcache_line_rdreq,		//
 	output				dcache_line_out_valid,		//
 
 	input	[ADDRBITS-1:0]		dcache_line_wraddr,		//
@@ -44,8 +43,8 @@ module cache_line
 	input	[WORDLENBITS-1:0]	dcache_line_in_wordlen,		//
 	input				dcache_line_wrreq,		//
 
-	input	[ADDRBITS-1:0]		icache_line_rdaddr,
-	input				icache_line_rdreq,
+	input	[ADDRBITS-1:0]		icache_line_rdaddr,		//
+	input				icache_line_rdreq,		//
 	output				icache_line_out_valid,		//
 
 
@@ -148,7 +147,8 @@ module cache_line
 	cache_memblock #(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
-		.LSBBITS		(LSBBITS)
+		.LSBBITS		(LSBBITS),
+		.WORDLENBITS		(WORDLENBITS)
 	)
 	(
 		.line_mem_wraddr	(line_mem_wraddr),
