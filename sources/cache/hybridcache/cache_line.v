@@ -40,7 +40,7 @@ module cache_line
 
 	input	[ADDRBITS-1:0]		dcache_line_wraddr,		//
 	input	[DATABITS-1:0]		dcache_line_in,			//
-	input	[WORDLENBITS-1:0]	dcache_line_in_wordlen,		//
+	input	[WORDLENBITS-1:0]	dcache_line_in_wordlen,		// 00=byte, 01=half word, 10=word
 	input				dcache_line_wrreq,		//
 
 	input	[ADDRBITS-1:0]		icache_line_rdaddr,		//
@@ -62,9 +62,9 @@ module cache_line
 
 	// connection to the memory
 	output	[ADDRBITS-1:0]		mem_addr,		//
-	output	[DATABITS-1:0]		mem_out,		//
-	input	[DATABITS-1:0]		mem_in,			//
-	input				mem_in_valid,		//
+	output	[DATABITS-1:0]		mem_in,			//
+	input	[DATABITS-1:0]		mem_out,		//
+	input				mem_out_valid,		//
 	output				mem_wrreq,		//
 	output				mem_rdreq,		//
 
