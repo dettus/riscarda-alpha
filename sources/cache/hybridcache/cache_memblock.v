@@ -45,7 +45,8 @@ module cache_memblock
 	wire	[DATABITS-1:0]		int_mem_out;
 	reg	[DATABITS-1:0]		r_line_mem_out;
 	reg	[BANKNUM-1:0]		r_bank_we;	
-	
+
+	assign	line_mem_out		=r_line_mem_out;	
 	always	@(line_mem_in,line_mem_wraddr[1:0])
 	begin
 		case (line_mem_wraddr[1:0])

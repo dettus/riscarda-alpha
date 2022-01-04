@@ -131,6 +131,7 @@ module cache_line
 	assign	cache_line_ready	=r_cache_line_ready;
 	assign	mem_in			=r_mem_in;
 
+	assign	cache_line_dirty	=r_cache_line_dirty;
 
 	/// the internal memory block gets the following inputs:
 	// rd_addr can be one of three: 
@@ -147,6 +148,9 @@ module cache_line
 		if (r_cache_line_ready & !w_icache_line_miss & icache_line_rdreq)	begin	m_line_mem_rdaddr=icache_line_rdaddr;end
 	end
 	assign	m_line_mem_in_wordlen=r_cache_line_ready?dcache_line_in_wordlen:2'b10;
+	assign	cache_line_out		=line_mem_out;
+	assign	mem_rdreq		=r_mem_rdreq;
+	assign	mem_wrreq		=r_mem_wrreq;
 
 	cache_memblock #(
 		.DATABITS		(DATABITS),
@@ -163,7 +167,6 @@ module cache_line
 		.line_mem_in_wordlen	(m_line_mem_in_wordlen),
 		.clk			(clk)
 	);
-
 
 	always	@(posedge clk or negedge reset_n)
 	begin
