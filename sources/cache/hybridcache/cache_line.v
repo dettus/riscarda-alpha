@@ -29,7 +29,8 @@ module cache_line
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
 	parameter	TTLBITS=8,
-	parameter	MAXTTL=((2**TTLBITS)-1)
+	parameter	MAXTTL=((2**TTLBITS)-1),
+	parameter	WORDLENBITS=2
 )
 (
 
@@ -75,8 +76,8 @@ module cache_line
 	reg	[ADDRBITS-1:0]	r_memory_region;
 	reg	[ADDRBITS-1:0]	r_next_memory_region;		// in case the line needs to be flushed first, it makes sense that the next region is already stored in the line
 	reg			r_empty;
-	reg			w_dcache_line_out_valid;
-	reg			w_icache_line_out_valid;
+	wire			w_dcache_line_out_valid;
+	wire			w_icache_line_out_valid;
 	reg			r_queue_dcache_rdpop;
 	reg			r_queue_dcache_wrpop;
 	reg			r_queue_icache_rdpop;
@@ -87,11 +88,11 @@ module cache_line
 	reg			r_mem_wrreq;
 	reg			r_mem_rdreq;
 
-	reg			w_dcache_rd_line_miss;
-	reg			w_dcache_wr_line_miss;
-	reg			w_icache_line_miss;
+	wire			w_dcache_rd_line_miss;
+	wire			w_dcache_wr_line_miss;
+	wire			w_icache_line_miss;
 
-	localparam [2:0]	MSR_CACHEING=3'b000,MSR_FILLING=3'b001,MSR_FLUSHING=3'b010,MSR_BETWEEN_FLUSH_AND_FILLING=3'b011;
+	localparam [2:0]	MSR_CACHEING=3'b000,MSR_FILLING=3'b001,MSR_FLUSHING=3'b010,MSR_BETWEEN_FLUSHING_AND_FILLING=3'b011;
 	reg	[2:0]		msr;
 
 
@@ -109,6 +110,8 @@ module cache_line
 
 	reg	[LSBBITS-1:0]		m_line_mem_rdaddr;
 	wire	[WORDLENBITS-1:0]	m_line_mem_in_wordlen;
+	wire	[DATABITS-1:0]		line_mem_out;
+	reg	[DATABITS-1:0]		r_mem_in;
 
 
 
@@ -126,6 +129,7 @@ module cache_line
 	assign	cache_line_ttl		=r_cache_line_ttl;
 	assign	mem_addr		=r_mem_addr;
 	assign	cache_line_ready	=r_cache_line_ready;
+	assign	mem_in			=r_mem_in;
 
 
 	/// the internal memory block gets the following inputs:
@@ -149,12 +153,12 @@ module cache_line
 		.ADDRBITS		(ADDRBITS),
 		.LSBBITS		(LSBBITS),
 		.WORDLENBITS		(WORDLENBITS)
-	)
+	) CACHE_MEMBLOCK0
 	(
-		.line_mem_wraddr	(line_mem_wraddr),
+		.line_mem_wraddr	(r_line_mem_wraddr),
 		.line_mem_rdaddr	(m_line_mem_rdaddr),
-		.line_mem_we		(line_mem_we),
-		.line_mem_in		(line_mem_in),
+		.line_mem_we		(r_line_mem_we),
+		.line_mem_in		(r_line_mem_in),
 		.line_mem_out		(line_mem_out),
 		.line_mem_in_wordlen	(m_line_mem_in_wordlen),
 		.clk			(clk)
@@ -181,7 +185,7 @@ module cache_line
 
 			r_line_mem_wordlen	<=2'b10;
 			r_line_mem_we		<=1'b0;
-			r_line_mem_addr		<='d0;
+			r_line_mem_wraddr	<='d0;
 			r_line_mem_in		<='h0;
 		end else begin
 			v_cache_line_dirty		=r_cache_line_dirty;
@@ -253,7 +257,7 @@ module cache_line
 								r_mem_rdreq			<=1'b0;
 							end else begin
 								v_cache_line_dirty		=1'b0;
-								if (r_mem_addr[LSBBITS-1:0]!=MAXLSBBITS)
+								if (r_mem_addr[LSBBITS-1:0]!=MAXLSBVALUE)
 								begin
 									r_mem_addr[LSBBITS-1:0]	<=r_mem_addr[LSBBITS-1:0]+'d4;
 									r_mem_rdreq		<=1'b1;
@@ -267,7 +271,7 @@ module cache_line
 								r_line_mem_in		<=mem_out;
 								r_line_mem_we		<=1'b1;
 								r_line_mem_wraddr	<=v_line_mem_wraddr;
-								if (v_line_mem_addr==MAXLSBBITS)
+								if (v_line_mem_wraddr==MAXLSBVALUE)
 								begin
 									msr		<=MSR_CACHEING;
 								end
@@ -282,17 +286,17 @@ module cache_line
 							r_line_mem_rdaddr		<=v_line_mem_rdaddr;
 							r_mem_wrreq			<=1'b1;
 							r_mem_in			<=line_mem_out;
-							if (v_line_mem_rdaddr==MAXLSBBITS)
+							if (v_line_mem_rdaddr==MAXLSBVALUE)
 							begin
 								if (r_empty)
 								begin
-									msr	<=MSR_CACHING;
+									msr	<=MSR_CACHEING;
 								end else begin
 									msr	<=MSR_BETWEEN_FLUSHING_AND_FILLING;
 								end
 							end
 						end
-				MSR_BETWEEN_FILLING: begin	// transitional period
+				MSR_BETWEEN_FLUSHING_AND_FILLING: begin	// transitional period
 								r_mem_wrreq			<=1'b0;
 								r_memory_region			<=r_next_memory_region;
 								r_mem_addr[ADDRBITS-1:LSBBITS]	<=r_next_memory_region;

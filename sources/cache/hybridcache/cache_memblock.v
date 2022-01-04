@@ -66,7 +66,7 @@ module cache_memblock
 	end
 	always	@(line_mem_wraddr[1:0],line_mem_in_wordlen)
 	begin
-		case({line_mem_in_wordlen,line_mem_in_wraddr[1:0]})
+		case({line_mem_in_wordlen,line_mem_wraddr[1:0]})
 			// byte write
 			4'b0000:	begin	r_bank_we<=4'b0001;	end
 			4'b0001:	begin	r_bank_we<=4'b0010;	end

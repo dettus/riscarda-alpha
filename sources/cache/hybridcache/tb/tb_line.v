@@ -56,7 +56,8 @@ module tb_line
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
 	parameter	TTLBITS=8,
-	parameter	MAXTTL=((2**TTLBITS)-1)
+	parameter	MAXTTL=((2**TTLBITS)-1),
+	parameter	WORDLENBITS=2
 )
 ();
 	reg	[ADDRBITS-1:0]		dcache_line_rdaddr;		//
@@ -98,7 +99,7 @@ module tb_line
 	reg				clk;
 
 	bigmem		BIGMEM0(
-		.mem_addr			(mem_addr),
+		.mem_addr			(mem_addr[11:2]),
 		.mem_in				(mem_in),
 		.mem_out			(mem_out),
 		.mem_out_valid			(mem_out_valid),
@@ -146,16 +147,18 @@ module tb_line
 	always	@(posedge clk)
 	begin
 		if (dcache_line_out_valid) begin
-			$display("DCACHE OUT: %08x",dcache_line_out);
+			$display("DCACHE OUT: %08x",cache_line_out);
 		end
 		if (icache_line_out_valid) begin
-			$display("                      ICACHE OUT: %08x",icache_line_out);
+			$display("                      ICACHE OUT: %08x",cache_line_out);
 		end
 	end
 
 	always	#5	clk<=!clk;
 
 	initial begin
+		$dumpfile("tb_line.vcd");
+		$dumpvars(0);
 		#0	reset_n<=1'b1;clk<=1'b0;
 			dcache_line_rdaddr<=32'h00000000;
 			dcache_line_rdreq<=1'b0;
