@@ -39,15 +39,23 @@ module	bigmem
 	input			clk
 );
 	reg	[DATABITS-1:0]	remember[MEMSIZE-1:0];
+	reg	r_mem_out_valid;
+	reg	[DATABITS-1:0]	r_mem_out;
+
+	assign	mem_out=r_mem_out;
+	assign	mem_out_valid=r_mem_out_valid;
 	always	@(posedge clk)
 	begin
-		if (mem_wrreq)
-		begin
+		if (mem_wrreq) begin
 			remember[mem_addr]<=mem_in;
+			r_mem_out_valid<=1'b0;
+		end else if (mem_rdreq) begin
+			r_mem_out<=remember[mem_addr];
+			r_mem_out_valid<=1'b1;
+		end else begin
+			r_mem_out_valid<=1'b1;
 		end
 	end
-	assign	mem_out_valid=mem_rdreq;
-	assign	mem_out=remember[mem_addr];
 endmodule
 module tb_line
 #(
@@ -164,6 +172,7 @@ module tb_line
 			dcache_line_rdreq<=1'b0;
 			dcache_line_wraddr<=32'h00000000;
 			dcache_line_wrreq<=1'b0;
+			dcache_line_in<=32'h0;
 			dcache_line_in_wordlen<=2'b10;
 			dcache_line_wrreq<=1'b0;
 			icache_line_rdaddr<=32'h00000000;
@@ -176,6 +185,91 @@ module tb_line
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
 		#8	$display("go");
+
+		#200	$display("setting cached region to 80000000");
+		#10	cache_line_fill<=1'b1;cache_new_region<=32'h80000000;
+		#10	cache_line_fill<=1'b0;
+
+		#1000	$display("filling memory address 80000000-8000003c with values 0fff0001-0fff0016");
+		#10	dcache_line_wraddr<=32'h80000000;dcache_line_in<=32'h0fff0001;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000004;dcache_line_in<=32'h0fff0002;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000008;dcache_line_in<=32'h0fff0003;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h8000000c;dcache_line_in<=32'h0fff0004;dcache_line_wrreq<=1'b1;
+
+		#10	dcache_line_wraddr<=32'h80000010;dcache_line_in<=32'h0fff0005;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000014;dcache_line_in<=32'h0fff0006;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000018;dcache_line_in<=32'h0fff0007;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h8000001c;dcache_line_in<=32'h0fff0008;dcache_line_wrreq<=1'b1;
+
+		#10	dcache_line_wraddr<=32'h80000020;dcache_line_in<=32'h0fff0009;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000024;dcache_line_in<=32'h0fff0010;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000028;dcache_line_in<=32'h0fff0011;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h8000002c;dcache_line_in<=32'h0fff0012;dcache_line_wrreq<=1'b1;
+
+		#10	dcache_line_wraddr<=32'h80000030;dcache_line_in<=32'h0fff0013;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000034;dcache_line_in<=32'h0fff0014;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h80000038;dcache_line_in<=32'h0fff0015;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=32'h8000003c;dcache_line_in<=32'h0fff0016;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wrreq<=1'b0;
+
+
+		#400	$display("reading memory region 80000000-8000000c");
+		#10	dcache_line_rdaddr<=32'h80000000;dcache_line_rdreq<=1'b1;
+		#10	dcache_line_rdaddr<=32'h80000004;dcache_line_rdreq<=1'b1;
+		#10	dcache_line_rdaddr<=32'h80000008;dcache_line_rdreq<=1'b1;
+		#10	dcache_line_rdaddr<=32'h8000000c;dcache_line_rdreq<=1'b1;
+		#10	dcache_line_rdreq<=1'b0;
+
+		#100	$display("setting cached region to 12345678");
+		#10	cache_line_flush<=1'b1;cache_line_fill<=1'b1;cache_new_region<=32'h12345678;
+		#10	cache_line_flush<=1'b0;cache_line_fill<=1'b0;
+		
+		#500	$display("filling with values 00000000");
+		#10	dcache_line_wraddr<=32'h12345600;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wraddr<=dcache_line_wraddr+'d4;dcache_line_in<=32'h00000000;dcache_line_wrreq<=1'b1;
+		#10	dcache_line_wrreq<=1'b0;
+		
+		#500	$display("setting cached region to 80000000");
+		#10	cache_line_flush<=1'b1;cache_line_fill<=1'b1;cache_new_region<=32'h80000000;
+		#10	cache_line_flush<=1'b0;cache_line_fill<=1'b0;
+	
+		#4000	$display("reading memory region 80000010-8000001c");
+		#10	icache_line_rdaddr<=32'h80000010;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h80000014;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h80000018;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h8000001c;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdreq<=1'b0;
+
 
 		#1000	$finish();
 	end

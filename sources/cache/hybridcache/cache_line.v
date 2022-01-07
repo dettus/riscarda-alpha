@@ -87,6 +87,7 @@ module cache_line
 	reg	[ADDRBITS-1:0]	r_mem_addr;
 	reg			r_mem_wrreq;
 	reg			r_mem_rdreq;
+	reg			v_mem_rdreq;
 
 	wire			w_dcache_rd_line_miss;
 	wire			w_dcache_wr_line_miss;
@@ -190,6 +191,7 @@ module cache_line
 			r_line_mem_we		<=1'b0;
 			r_line_mem_wraddr	<='d0;
 			r_line_mem_in		<='h0;
+			msr			<=MSR_CACHEING;
 		end else begin
 			v_cache_line_dirty		=r_cache_line_dirty;
 			if (!w_dcache_wr_line_miss & dcache_line_wrreq)
@@ -210,7 +212,7 @@ module cache_line
 										r_line_mem_wordlen		<=2'b10;
 										r_line_mem_we			<=1'b0;
 										r_line_mem_rdaddr		<='d0;
-										r_line_mem_wraddr		<='d0;
+										r_line_mem_wraddr		<='d0-'d4;
 										r_line_mem_in			<='h0;
 										r_empty				<=1'b0;	// once the line has been filled, it is no longer empty
 										v_cache_line_ready		=1'b0;
@@ -254,18 +256,17 @@ module cache_line
 							
 						end
 				MSR_FILLING:	begin
-							r_mem_wrreq			<=1'b0;
+							v_mem_rdreq			=1'b1;
 							if (cache_line_pause)
 							begin
-								r_mem_rdreq			<=1'b0;
+								v_mem_rdreq			=1'b0;
 							end else begin
 								v_cache_line_dirty		=1'b0;
 								if (r_mem_addr[LSBBITS-1:0]!=MAXLSBVALUE)
 								begin
 									r_mem_addr[LSBBITS-1:0]	<=r_mem_addr[LSBBITS-1:0]+'d4;
-									r_mem_rdreq		<=1'b1;
 								end else begin
-									r_mem_rdreq		<=1'b0;
+									v_mem_rdreq		=1'b0;
 								end
 							end
 							if (mem_out_valid) 
@@ -277,15 +278,18 @@ module cache_line
 								if (v_line_mem_wraddr==MAXLSBVALUE)
 								begin
 									msr		<=MSR_CACHEING;
+									v_mem_rdreq		=1'b0;
 								end
 							end else begin
 								r_line_mem_we		<=1'b0;
 							end
+							r_mem_rdreq	<=v_mem_rdreq;
+							r_mem_wrreq	<=1'b0;
 						end
 				MSR_FLUSHING:	begin	// just produce addr/data tuples until the line memory has been read
 							v_cache_line_dirty		=1'b0;
 							v_line_mem_rdaddr		=r_line_mem_rdaddr+'d4;
-							r_mem_addr[LSBBITS-1:0]		<=r_mem_addr[LSBBITS-1:0]+'d4;
+							r_mem_addr[LSBBITS-1:0]		<=r_line_mem_rdaddr;
 							r_line_mem_rdaddr		<=v_line_mem_rdaddr;
 							r_mem_wrreq			<=1'b1;
 							r_mem_in			<=line_mem_out;
@@ -302,13 +306,13 @@ module cache_line
 				MSR_BETWEEN_FLUSHING_AND_FILLING: begin	// transitional period
 								r_mem_wrreq			<=1'b0;
 								r_memory_region			<=r_next_memory_region;
-								r_mem_addr[ADDRBITS-1:LSBBITS]	<=r_next_memory_region;
+								r_mem_addr[ADDRBITS-1:LSBBITS]	<=r_next_memory_region[ADDRBITS-1:LSBBITS];
 								r_mem_addr[LSBBITS-1:0]		<='b0;
 								r_mem_rdreq			<=1'b1;
 								msr				<=MSR_FILLING;
 								r_line_mem_wordlen		<=2'b10;
 								r_line_mem_we			<=1'b0;
-								r_line_mem_wraddr		<='d0;
+								r_line_mem_wraddr		<='d0-'d4;
 								r_line_mem_in			<='h0;
 								r_empty				<=1'b0;	// once the line has been filled, it is no longer empty
 						end
