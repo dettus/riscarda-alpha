@@ -28,8 +28,8 @@ module cache_line
 	parameter	DATABITS=32,
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
-	parameter	MAXMISSBITS=8,
-	parameter	MAXMISSCNT=((2**MAXMISSBITS)-1),
+	parameter	MAXHITBITS=8,
+	parameter	MAXHITCNT=((2**MAXHITBITS)-1),
 	parameter	WORDLENBITS=2
 )
 (
@@ -52,11 +52,11 @@ module cache_line
 	output	[DATABITS-1:0]		cache_line_out,			// return value
 	// connection to the controller
 	output				cache_line_dirty,		// =1 in case there has been a write request
-	output				cache_line_miss,		// // =1 if ALL of the requests failed
+	output				cache_line_hit,		// // =1 if ALL of the requests failed
 	input				cache_line_flush,		//
 	input				cache_line_fill,		//
 	input				cache_line_pause,		// in case the memory controller is overloaded
-	output	[MAXMISSBITS-1:0]		cache_line_misscnt,			//
+	output	[MAXHITBITS-1:0]	cache_line_hitcnt,		//
 	input	[ADDRBITS-1:0]		cache_new_region,		//
 	output				cache_line_ready,		//
 
@@ -83,19 +83,21 @@ module cache_line
 	reg			r_queue_icache_rdpop;
 	reg			r_cache_line_dirty;
 	reg			v_cache_line_dirty;
-	reg	[MAXMISSBITS-1:0]	r_cache_line_misscnt;
+	reg	[MAXHITBITS-1:0]	r_cache_line_hitcnt;
 	reg	[ADDRBITS-1:0]	r_mem_addr;
 	reg			r_mem_wrreq;
 	reg			r_mem_rdreq;
 	reg			v_mem_rdreq;
 
-	wire			w_dcache_rd_line_miss;
-	wire			w_dcache_wr_line_miss;
-	wire			w_icache_line_miss;
-	wire			w_cache_line_miss;
+	wire			w_dcache_rd_line_hit;
+	wire			w_dcache_wr_line_hit;
+	wire			w_icache_line_hit;
+	wire			w_cache_line_hit;
 
-	localparam [2:0]	MSR_CACHEING=3'b000,MSR_FILLING=3'b001,MSR_FLUSHING=3'b010,MSR_BETWEEN_FLUSHING_AND_FILLING=3'b011;
+	localparam [2:0]	MSR_CACHEING=3'b000,MSR_FILLING=3'b001,MSR_FLUSHING=3'b010,MSR_BETWEEN_FLUSHING_AND_FILLING=3'b011,MSR_SPECIAL=3'b100;
 	reg	[2:0]		msr;
+	reg			r_special;
+	reg	[LSBBITS-1:0]	r_special_addr;
 
 
 	// for the line memory
@@ -117,19 +119,19 @@ module cache_line
 
 
 
-	assign	w_dcache_rd_line_miss	=(dcache_line_rdaddr[ADDRBITS-1:LSBBITS]!=r_memory_region[ADDRBITS-1:LSBBITS])|r_empty;
-	assign	w_dcache_wr_line_miss	=(dcache_line_wraddr[ADDRBITS-1:LSBBITS]!=r_memory_region[ADDRBITS-1:LSBBITS])|r_empty;
-	assign	w_icache_line_miss	=(icache_line_rdaddr[ADDRBITS-1:LSBBITS]!=r_memory_region[ADDRBITS-1:LSBBITS])|r_empty;
+	assign	w_dcache_rd_line_hit	=(dcache_line_rdaddr[ADDRBITS-1:LSBBITS]==r_memory_region[ADDRBITS-1:LSBBITS])&!r_empty;
+	assign	w_dcache_wr_line_hit	=(dcache_line_wraddr[ADDRBITS-1:LSBBITS]==r_memory_region[ADDRBITS-1:LSBBITS])&!r_empty;
+	assign	w_icache_line_hit	=(icache_line_rdaddr[ADDRBITS-1:LSBBITS]==r_memory_region[ADDRBITS-1:LSBBITS])&!r_empty;
 
-	assign	w_dcache_line_out_valid	=!w_dcache_rd_line_miss&dcache_line_rdreq;
-	assign	w_icache_line_out_valid	=!w_icache_line_miss&icache_line_rdreq;
+	assign	w_dcache_line_out_valid	=w_dcache_rd_line_hit&dcache_line_rdreq;
+	assign	w_icache_line_out_valid	=w_icache_line_hit&icache_line_rdreq;
 
-	assign	w_cache_line_miss	=!w_dcache_line_out_valid & !w_icache_line_out_valid & (!w_dcache_wr_line_miss & dcache_line_wrreq);	
-	assign	cache_line_miss		=w_cache_line_miss;
+	assign	w_cache_line_hit	=w_dcache_line_out_valid | w_icache_line_out_valid | (w_dcache_wr_line_hit & dcache_line_wrreq);	
+	assign	cache_line_hit		=w_cache_line_hit;
 
-	assign	dcache_line_out_valid	=w_dcache_line_out_valid & r_cache_line_ready; // TODO & !flushing/filling	
-	assign	icache_line_out_valid	=w_icache_line_out_valid & r_cache_line_ready; // TODO & !flushing/filling	
-	assign	cache_line_misscnt		=r_cache_line_misscnt;
+	assign	dcache_line_out_valid	=w_dcache_line_out_valid & r_cache_line_ready; 
+	assign	icache_line_out_valid	=(w_icache_line_out_valid & r_cache_line_ready & !w_dcache_line_out_valid)|r_special; 	// special case: both dcache read and icache read are hits.
+	assign	cache_line_hitcnt	=r_cache_line_hitcnt;
 	assign	mem_addr		=r_mem_addr;
 	assign	cache_line_ready	=r_cache_line_ready;
 	assign	mem_in			=r_mem_in;
@@ -144,11 +146,16 @@ module cache_line
 	// wr_addr
 	// wr_value
 
-	always	@(dcache_line_rdaddr,icache_line_rdaddr,r_cache_line_ready, r_line_mem_rdaddr,dcache_line_rdreq,icache_line_rdreq,w_icache_line_miss,w_dcache_rd_line_miss)
+	always	@(dcache_line_rdaddr,icache_line_rdaddr,r_cache_line_ready, r_line_mem_rdaddr,dcache_line_rdreq,icache_line_rdreq,w_icache_line_hit,w_dcache_rd_line_hit,r_special,r_special_addr)
 	begin
-		m_line_mem_rdaddr	=r_line_mem_rdaddr;
-		if (r_cache_line_ready & !w_dcache_rd_line_miss & dcache_line_rdreq)	begin	m_line_mem_rdaddr=dcache_line_rdaddr;end
-		if (r_cache_line_ready & !w_icache_line_miss & icache_line_rdreq)	begin	m_line_mem_rdaddr=icache_line_rdaddr;end
+		if (r_special)
+		begin
+			m_line_mem_rdaddr	=r_special_addr;
+		end else begin
+			m_line_mem_rdaddr	=r_line_mem_rdaddr;
+			if (r_cache_line_ready &  w_dcache_rd_line_hit& dcache_line_rdreq)			begin	m_line_mem_rdaddr=dcache_line_rdaddr;end
+			if (r_cache_line_ready & (!w_dcache_rd_line_hit|!dcache_line_rdreq)& w_icache_line_hit & icache_line_rdreq)	begin	m_line_mem_rdaddr=icache_line_rdaddr;end
+		end
 	end
 	assign	m_line_mem_in_wordlen=r_cache_line_ready?dcache_line_in_wordlen:2'b10;
 	assign	cache_line_out		=line_mem_out;
@@ -182,7 +189,7 @@ module cache_line
 			r_queue_dcache_wrpop	<=1'b0;
 			r_queue_icache_rdpop	<=1'b0;
 			r_cache_line_dirty	<=1'b0;
-			r_cache_line_misscnt	<=MAXMISSCNT;
+			r_cache_line_hitcnt	<='d0;
 			r_mem_addr		<='h0;
 			r_mem_wrreq		<=1'b0;
 			r_mem_rdreq		<=1'b0;
@@ -194,14 +201,16 @@ module cache_line
 			r_line_mem_wraddr	<='d0;
 			r_line_mem_in		<='h0;
 			msr			<=MSR_CACHEING;
+			r_special		<=1'b0;
 		end else begin
 			v_cache_line_dirty		=r_cache_line_dirty;
-			if (!w_dcache_wr_line_miss & dcache_line_wrreq)
+			if (!w_dcache_wr_line_hit & dcache_line_wrreq)
 			begin
 				v_cache_line_dirty	=1'b1;
 			end
 			case (msr)
 				MSR_CACHEING:	begin
+							r_special			<=1'b0;
 							v_cache_line_ready		=1'b1;
 							r_mem_wrreq			<=1'b0;
 							case ({cache_line_flush,cache_line_fill})
@@ -218,11 +227,11 @@ module cache_line
 										r_line_mem_in			<='h0;
 										r_empty				<=1'b0;	// once the line has been filled, it is no longer empty
 										v_cache_line_ready		=1'b0;
-										r_cache_line_misscnt		<='d0;
+										r_cache_line_hitcnt		<=MAXHITCNT;
 									end
 								2'b10:	begin	// just flushing, no filling afterwards
 										r_empty				<=1'b1;	// once the line has been flushed, it is empty
-										r_cache_line_misscnt		<=MAXMISSCNT;	// since it is empty, it should be filled the next time
+										r_cache_line_hitcnt		<='d0;	// since it is empty, it should be filled the next time
 										r_mem_addr[ADDRBITS-1:LSBBITS]	<=r_memory_region[ADDRBITS-1:LSBBITS];
 										r_mem_addr[LSBBITS-1:0]		<='b0;
 										r_line_mem_we			<=1'b0;
@@ -241,10 +250,10 @@ module cache_line
 										r_line_mem_wraddr		<='d0;
 										msr				<=MSR_FLUSHING;
 										v_cache_line_ready		=1'b0;
-										r_cache_line_misscnt		<='d0;
+										r_cache_line_hitcnt		<=MAXHITCNT;
 									end
 								default:begin
-										if (dcache_line_wrreq & !w_dcache_wr_line_miss)
+										if (dcache_line_wrreq & w_dcache_wr_line_hit)
 										begin
 											v_cache_line_dirty	=1'b1;
 											r_line_mem_we		<=1'b1;
@@ -258,18 +267,29 @@ module cache_line
 
 										if (dcache_line_rdreq|dcache_line_wrreq|icache_line_rdreq)
 										begin
-											if (!w_cache_line_miss & r_cache_line_misscnt!='d0)
+											if (!w_cache_line_hit & r_cache_line_hitcnt!='d0)
 											begin
-												r_cache_line_misscnt<=r_cache_line_misscnt-'d1;
-											end else if (w_cache_line_miss & r_cache_line_misscnt!=MAXMISSCNT)
+												r_cache_line_hitcnt<=r_cache_line_hitcnt-'d1;
+											end else if (w_cache_line_hit & r_cache_line_hitcnt!=MAXHITCNT)
 											begin
-												r_cache_line_misscnt<=r_cache_line_misscnt+'d1;
+												r_cache_line_hitcnt<=r_cache_line_hitcnt+'d1;
 											end
+										end
+										
+										if (w_dcache_line_out_valid&w_icache_line_out_valid)
+										begin
+											v_cache_line_ready	=1'b0;
+											msr			<=MSR_SPECIAL;
+											r_special_addr		<=icache_line_rdaddr[LSBBITS-1:0];
 										end
 									end
 							endcase
 							r_cache_line_ready		<=v_cache_line_ready;
-							
+						end
+				MSR_SPECIAL:	begin
+							r_special		<=1'b1;
+							r_line_mem_we		<=1'b0;
+							msr			<=MSR_CACHEING;
 						end
 				MSR_FILLING:	begin
 							v_mem_rdreq			=1'b1;

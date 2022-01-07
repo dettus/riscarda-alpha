@@ -63,8 +63,8 @@ module tb_line
 	parameter	DATABITS=32,
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
-	parameter	MAXMISSBITS=8,
-	parameter	MAXMISSCNT=((2**MAXMISSBITS)-1),
+	parameter	MAXHITBITS=8,
+	parameter	MAXHITCNT=((2**MAXHITBITS)-1),
 	parameter	WORDLENBITS=2
 )
 ();
@@ -85,11 +85,11 @@ module tb_line
 	wire	[DATABITS-1:0]		cache_line_out;			// return value
 	// connection to the controller
 	wire				cache_line_dirty;		// =1 in case there has been a write request
-	wire				cache_line_miss;		// // =1 if ALL of the requests failed
+	wire				cache_line_hit;		// // =1 if ALL of the requests failed
 	reg				cache_line_flush;		//
 	reg				cache_line_fill;		//
 	reg				cache_line_pause;		// in case the memory controller is overloaded
-	wire	[MAXMISSBITS-1:0]		cache_line_misscnt;			//
+	wire	[MAXHITBITS-1:0]	cache_line_hitcnt;			//
 	reg	[ADDRBITS-1:0]		cache_new_region;		//
 	wire				cache_line_ready;		//
 
@@ -133,11 +133,11 @@ module tb_line
 
 		.cache_line_out			(cache_line_out),
 		.cache_line_dirty		(cache_line_dirty),
-		.cache_line_miss		(cache_line_miss),
+		.cache_line_hit			(cache_line_hit),
 		.cache_line_flush		(cache_line_flush),
 		.cache_line_fill		(cache_line_fill),
 		.cache_line_pause		(cache_line_pause),
-		.cache_line_misscnt			(cache_line_misscnt),
+		.cache_line_hitcnt		(cache_line_hitcnt),
 		.cache_new_region		(cache_new_region),
 		.cache_line_ready		(cache_line_ready),
 
@@ -270,12 +270,30 @@ module tb_line
 		#10	icache_line_rdaddr<=32'h8000001c;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdreq<=1'b0;
 
-		#1000	$display("reading the wrong adress");
+		#1000	$display("reading the wrong region");
 		#10	icache_line_rdaddr<=32'h40000010;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdaddr<=32'h40000014;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdaddr<=32'h40000018;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdaddr<=32'h4000001c;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdreq<=1'b0;
+
+		#4000	$display("reading memory region 80000020-8000002c");
+		#10	icache_line_rdaddr<=32'h80000020;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h80000024;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h80000028;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h8000002c;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdreq<=1'b0;
+
+		#5000	$display("very special case: wrreq, rdreq and irdreq all match. THe output should be 0fff0014 from d, 0fff0013 from i and finally ffffffff");
+		#10	icache_line_rdaddr<=32'h80000030;icache_line_rdreq<=1'b1;
+			dcache_line_rdaddr<=32'h80000034;dcache_line_rdreq<=1'b1;
+			dcache_line_wraddr<=32'h80000038;dcache_line_in<=32'hffffffff;dcache_line_wrreq<=1'b1;
+		#10	icache_line_rdreq<=1'b0;dcache_line_rdreq<=1'b0;dcache_line_wrreq<=1'b0;
+		#50	dcache_line_rdaddr<=32'h80000038;dcache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h80000038;dcache_line_rdreq<=1'b0;
+		#10	icache_line_rdreq<=1'b1;
+		#10	icache_line_rdreq<=1'b0;dcache_line_rdreq<=1'b0;dcache_line_wrreq<=1'b0;
+		
 
 
 
