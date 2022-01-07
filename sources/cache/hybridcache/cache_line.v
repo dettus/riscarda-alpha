@@ -28,8 +28,8 @@ module cache_line
 	parameter	DATABITS=32,
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
-	parameter	TTLBITS=8,
-	parameter	MAXTTL=((2**TTLBITS)-1),
+	parameter	MAXMISSBITS=8,
+	parameter	MAXMISSCNT=((2**MAXMISSBITS)-1),
 	parameter	WORDLENBITS=2
 )
 (
@@ -56,7 +56,7 @@ module cache_line
 	input				cache_line_flush,		//
 	input				cache_line_fill,		//
 	input				cache_line_pause,		// in case the memory controller is overloaded
-	output	[TTLBITS-1:0]		cache_line_ttl,			//
+	output	[MAXMISSBITS-1:0]		cache_line_misscnt,			//
 	input	[ADDRBITS-1:0]		cache_new_region,		//
 	output				cache_line_ready,		//
 
@@ -83,7 +83,7 @@ module cache_line
 	reg			r_queue_icache_rdpop;
 	reg			r_cache_line_dirty;
 	reg			v_cache_line_dirty;
-	reg	[TTLBITS-1:0]	r_cache_line_ttl;
+	reg	[MAXMISSBITS-1:0]	r_cache_line_misscnt;
 	reg	[ADDRBITS-1:0]	r_mem_addr;
 	reg			r_mem_wrreq;
 	reg			r_mem_rdreq;
@@ -92,6 +92,7 @@ module cache_line
 	wire			w_dcache_rd_line_miss;
 	wire			w_dcache_wr_line_miss;
 	wire			w_icache_line_miss;
+	wire			w_cache_line_miss;
 
 	localparam [2:0]	MSR_CACHEING=3'b000,MSR_FILLING=3'b001,MSR_FLUSHING=3'b010,MSR_BETWEEN_FLUSHING_AND_FILLING=3'b011;
 	reg	[2:0]		msr;
@@ -123,11 +124,12 @@ module cache_line
 	assign	w_dcache_line_out_valid	=!w_dcache_rd_line_miss&dcache_line_rdreq;
 	assign	w_icache_line_out_valid	=!w_icache_line_miss&icache_line_rdreq;
 
-	assign	cache_line_miss		=!w_dcache_line_out_valid & !w_icache_line_out_valid & (!w_dcache_wr_line_miss & dcache_line_wrreq);	
+	assign	w_cache_line_miss	=!w_dcache_line_out_valid & !w_icache_line_out_valid & (!w_dcache_wr_line_miss & dcache_line_wrreq);	
+	assign	cache_line_miss		=w_cache_line_miss;
 
 	assign	dcache_line_out_valid	=w_dcache_line_out_valid & r_cache_line_ready; // TODO & !flushing/filling	
 	assign	icache_line_out_valid	=w_icache_line_out_valid & r_cache_line_ready; // TODO & !flushing/filling	
-	assign	cache_line_ttl		=r_cache_line_ttl;
+	assign	cache_line_misscnt		=r_cache_line_misscnt;
 	assign	mem_addr		=r_mem_addr;
 	assign	cache_line_ready	=r_cache_line_ready;
 	assign	mem_in			=r_mem_in;
@@ -180,7 +182,7 @@ module cache_line
 			r_queue_dcache_wrpop	<=1'b0;
 			r_queue_icache_rdpop	<=1'b0;
 			r_cache_line_dirty	<=1'b0;
-			r_cache_line_ttl	<=MAXTTL;
+			r_cache_line_misscnt	<=MAXMISSCNT;
 			r_mem_addr		<='h0;
 			r_mem_wrreq		<=1'b0;
 			r_mem_rdreq		<=1'b0;
@@ -216,9 +218,11 @@ module cache_line
 										r_line_mem_in			<='h0;
 										r_empty				<=1'b0;	// once the line has been filled, it is no longer empty
 										v_cache_line_ready		=1'b0;
+										r_cache_line_misscnt		<='d0;
 									end
 								2'b10:	begin	// just flushing, no filling afterwards
 										r_empty				<=1'b1;	// once the line has been flushed, it is empty
+										r_cache_line_misscnt		<=MAXMISSCNT;	// since it is empty, it should be filled the next time
 										r_mem_addr[ADDRBITS-1:LSBBITS]	<=r_memory_region[ADDRBITS-1:LSBBITS];
 										r_mem_addr[LSBBITS-1:0]		<='b0;
 										r_line_mem_we			<=1'b0;
@@ -237,6 +241,7 @@ module cache_line
 										r_line_mem_wraddr		<='d0;
 										msr				<=MSR_FLUSHING;
 										v_cache_line_ready		=1'b0;
+										r_cache_line_misscnt		<='d0;
 									end
 								default:begin
 										if (dcache_line_wrreq & !w_dcache_wr_line_miss)
@@ -249,6 +254,17 @@ module cache_line
 										end else begin
 											r_line_mem_we		<=1'b0;
 
+										end
+
+										if (dcache_line_rdreq|dcache_line_wrreq|icache_line_rdreq)
+										begin
+											if (!w_cache_line_miss & r_cache_line_misscnt!='d0)
+											begin
+												r_cache_line_misscnt<=r_cache_line_misscnt-'d1;
+											end else if (w_cache_line_miss & r_cache_line_misscnt!=MAXMISSCNT)
+											begin
+												r_cache_line_misscnt<=r_cache_line_misscnt+'d1;
+											end
 										end
 									end
 							endcase

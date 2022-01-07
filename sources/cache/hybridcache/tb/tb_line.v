@@ -63,8 +63,8 @@ module tb_line
 	parameter	DATABITS=32,
 	parameter	LSBBITS=7,
 	parameter	MAXLSBVALUE=(2**LSBBITS-4),
-	parameter	TTLBITS=8,
-	parameter	MAXTTL=((2**TTLBITS)-1),
+	parameter	MAXMISSBITS=8,
+	parameter	MAXMISSCNT=((2**MAXMISSBITS)-1),
 	parameter	WORDLENBITS=2
 )
 ();
@@ -89,7 +89,7 @@ module tb_line
 	reg				cache_line_flush;		//
 	reg				cache_line_fill;		//
 	reg				cache_line_pause;		// in case the memory controller is overloaded
-	wire	[TTLBITS-1:0]		cache_line_ttl;			//
+	wire	[MAXMISSBITS-1:0]		cache_line_misscnt;			//
 	reg	[ADDRBITS-1:0]		cache_new_region;		//
 	wire				cache_line_ready;		//
 
@@ -137,7 +137,7 @@ module tb_line
 		.cache_line_flush		(cache_line_flush),
 		.cache_line_fill		(cache_line_fill),
 		.cache_line_pause		(cache_line_pause),
-		.cache_line_ttl			(cache_line_ttl),
+		.cache_line_misscnt			(cache_line_misscnt),
 		.cache_new_region		(cache_new_region),
 		.cache_line_ready		(cache_line_ready),
 
@@ -269,6 +269,15 @@ module tb_line
 		#10	icache_line_rdaddr<=32'h80000018;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdaddr<=32'h8000001c;icache_line_rdreq<=1'b1;
 		#10	icache_line_rdreq<=1'b0;
+
+		#1000	$display("reading the wrong adress");
+		#10	icache_line_rdaddr<=32'h40000010;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h40000014;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h40000018;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdaddr<=32'h4000001c;icache_line_rdreq<=1'b1;
+		#10	icache_line_rdreq<=1'b0;
+
+
 
 
 		#1000	$finish();
