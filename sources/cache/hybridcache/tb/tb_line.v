@@ -71,6 +71,7 @@ module tb_line
 	reg	[ADDRBITS-1:0]		dcache_line_rdaddr;		//
 	reg				dcache_line_rdreq;		//
 	wire				dcache_line_out_valid;		//
+	wire				dcache_line_hit;		//
 
 	reg	[ADDRBITS-1:0]		dcache_line_wraddr;		//
 	reg	[DATABITS-1:0]		dcache_line_in;			//
@@ -80,12 +81,13 @@ module tb_line
 	reg	[ADDRBITS-1:0]		icache_line_rdaddr;		//
 	reg				icache_line_rdreq;		//
 	wire				icache_line_out_valid;		//
+	wire				icache_line_hit;		//
 
 
 	wire	[DATABITS-1:0]		cache_line_out;			// return value
 	// connection to the controller
 	wire				cache_line_dirty;		// =1 in case there has been a write request
-	wire				cache_line_hit;		// // =1 if ALL of the requests failed
+	wire				cache_line_hit;		// 
 	reg				cache_line_flush;		//
 	reg				cache_line_fill;		//
 	reg				cache_line_pause;		// in case the memory controller is overloaded
@@ -117,10 +119,11 @@ module tb_line
 		.clk				(clk)
 	);
 
-	cache_line	CACHE_LINE0(
+	hybrid_cache_line	CACHE_LINE0(
 		.dcache_line_rdaddr		(dcache_line_rdaddr),
 		.dcache_line_rdreq		(dcache_line_rdreq),
 		.dcache_line_out_valid		(dcache_line_out_valid),
+		.dcache_line_hit		(dcache_line_hit),
 
 		.dcache_line_wraddr		(dcache_line_wraddr),
 		.dcache_line_in			(dcache_line_in),
@@ -130,6 +133,7 @@ module tb_line
 		.icache_line_rdaddr		(icache_line_rdaddr),
 		.icache_line_rdreq		(icache_line_rdreq),
 		.icache_line_out_valid		(icache_line_out_valid),
+		.icache_line_hit		(icache_line_hit),
 
 		.cache_line_out			(cache_line_out),
 		.cache_line_dirty		(cache_line_dirty),

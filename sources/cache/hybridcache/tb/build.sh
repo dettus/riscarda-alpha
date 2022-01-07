@@ -22,5 +22,5 @@
 #/////////////////////////////////////////////////////////////////////////////
 #(SPDX short identifier: BSD-1-Clause)
 #
-iverilog -t vvp -o tb_line.vvp tb_line.v ../cache_line.v ../cache_memblock.v ../dpram.v
+iverilog -t vvp -o tb_line.vvp tb_line.v ../hybrid_cache_line.v ../hybrid_cache_memblock.v ../dpram.v
 

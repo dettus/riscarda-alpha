@@ -22,7 +22,7 @@
 //(SPDX short identifier: BSD-1-Clause)
 //
 
-module cache_memblock
+module hybrid_cache_memblock
 #(
 	parameter	ADDRBITS=32,
 	parameter	DATABITS=32,
@@ -87,7 +87,7 @@ module cache_memblock
 	end
 
 
-	dpram	
+	mydpram	
 	#(
 		.DATABITS	(DATABITS/BANKNUM),
 		.ADDRBITS	(LSBBITS-LOGBANKNUM)

@@ -22,7 +22,7 @@
 //(SPDX short identifier: BSD-1-Clause)
 //
 
-module	dpram
+module	mydpram
 #(
 	parameter	DATABITS=8,
 	parameter	ADDRBITS=5,

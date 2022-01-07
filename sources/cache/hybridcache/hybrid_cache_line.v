@@ -22,7 +22,7 @@
 //(SPDX short identifier: BSD-1-Clause)
 //
 
-module cache_line
+module hybrid_cache_line
 #(
 	parameter	ADDRBITS=32,
 	parameter	DATABITS=32,
@@ -38,6 +38,7 @@ module cache_line
 	input	[ADDRBITS-1:0]		dcache_line_rdaddr,		//
 	input				dcache_line_rdreq,		//
 	output				dcache_line_out_valid,		//
+	output				dcache_line_hit,		// // =0 if the dcache req missed
 
 	input	[ADDRBITS-1:0]		dcache_line_wraddr,		//
 	input	[DATABITS-1:0]		dcache_line_in,			//
@@ -47,12 +48,13 @@ module cache_line
 	input	[ADDRBITS-1:0]		icache_line_rdaddr,		//
 	input				icache_line_rdreq,		//
 	output				icache_line_out_valid,		//
+	output				icache_line_hit,		// // =0 if the icache req missed
 
 
 	output	[DATABITS-1:0]		cache_line_out,			// return value
 	// connection to the controller
 	output				cache_line_dirty,		// =1 in case there has been a write request
-	output				cache_line_hit,		// // =1 if ALL of the requests failed
+	output				cache_line_hit,			// // =0 if ALL of the requests failed
 	input				cache_line_flush,		//
 	input				cache_line_fill,		//
 	input				cache_line_pause,		// in case the memory controller is overloaded
@@ -125,6 +127,8 @@ module cache_line
 
 	assign	w_dcache_line_out_valid	=w_dcache_rd_line_hit&dcache_line_rdreq;
 	assign	w_icache_line_out_valid	=w_icache_line_hit&icache_line_rdreq;
+	assign	dcache_line_hit		=w_dcache_line_out_valid;
+	assign	icache_line_hit		=w_icache_line_out_valid;
 
 	assign	w_cache_line_hit	=w_dcache_line_out_valid | w_icache_line_out_valid | (w_dcache_wr_line_hit & dcache_line_wrreq);	
 	assign	cache_line_hit		=w_cache_line_hit;
@@ -162,7 +166,7 @@ module cache_line
 	assign	mem_rdreq		=r_mem_rdreq;
 	assign	mem_wrreq		=r_mem_wrreq;
 
-	cache_memblock #(
+	hybrid_cache_memblock #(
 		.DATABITS		(DATABITS),
 		.ADDRBITS		(ADDRBITS),
 		.LSBBITS		(LSBBITS),
