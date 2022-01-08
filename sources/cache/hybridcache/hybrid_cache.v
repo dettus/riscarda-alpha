@@ -700,7 +700,7 @@ module	hybrid_cache
 			endcase
 
 			// demultiplex the dcache/icache outputs
-			case (dcache_out_valid)
+			case (dcache_line_out_valid)
 				8'b00000001:	begin	r_dcache_out<=cache_line_out0;r_dcache_out_valid<=1'b1;end
 				8'b00000010:	begin	r_dcache_out<=cache_line_out1;r_dcache_out_valid<=1'b1;end
 				8'b00000100:	begin	r_dcache_out<=cache_line_out2;r_dcache_out_valid<=1'b1;end
@@ -712,7 +712,7 @@ module	hybrid_cache
 
 				default:	begin	r_dcache_out_valid<=1'b0;end
 			endcase
-			case (icache_out_valid)
+			case (icache_line_out_valid)
 				8'b00000001:	begin	r_icache_out<=cache_line_out0;r_icache_out_valid<=1'b1;end
 				8'b00000010:	begin	r_icache_out<=cache_line_out1;r_icache_out_valid<=1'b1;end
 				8'b00000100:	begin	r_icache_out<=cache_line_out2;r_icache_out_valid<=1'b1;end

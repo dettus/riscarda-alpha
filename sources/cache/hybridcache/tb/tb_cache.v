@@ -183,6 +183,46 @@ module tb_cache
 		#10	dcache_wraddr<=32'h8000000c;dcache_in<=32'h0fff0004;dcache_wrreq<=1'b1;
 		#10	dcache_wrreq<=1'b0;
 
+		#4000	$display("read test. expecting 0fff0001... 0fff0004");
+		#10	dcache_rdaddr<=32'h80000000;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h80000004;dcache_rdreq<=1'b1;	
+		#10	dcache_rdaddr<=32'h80000008;dcache_rdreq<=1'b1;	
+		#10	dcache_rdaddr<=32'h8000000c;dcache_rdreq<=1'b1;	
+		#10	dcache_rdreq<=1'b0;
+
+		#10	icache_rdaddr<=32'h80000000;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h80000004;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h80000008;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h8000000c;icache_rdreq<=1'b1;	
+		#10	icache_rdreq<=1'b0;
+
+		#5000	$display("flush test 1/2");
+		#10	dcache_wraddr<=32'h00000100;dcache_in<=32'h00000100;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000180;dcache_in<=32'h00000180;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000200;dcache_in<=32'h00000200;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000280;dcache_in<=32'h00000280;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+		#2000	$display("flush test 2/2");
+		#10	dcache_wraddr<=32'h00000300;dcache_in<=32'h00000300;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000380;dcache_in<=32'h00000380;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000400;dcache_in<=32'h00000400;dcache_wrreq<=1'b1;
+		#10	dcache_wraddr<=32'h00000480;dcache_in<=32'h00000480;dcache_wrreq<=1'b1;
+		#10	dcache_wrreq<=1'b0;
+
+		#4000	$display("read test. expecting 0fff0001... 0fff0004");
+		#10	dcache_rdaddr<=32'h80000000;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h80000004;dcache_rdreq<=1'b1;	
+		#10	dcache_rdaddr<=32'h80000008;dcache_rdreq<=1'b1;	
+		#10	dcache_rdaddr<=32'h8000000c;dcache_rdreq<=1'b1;	
+		#10	dcache_rdreq<=1'b0;
+
+		#10	icache_rdaddr<=32'h80000000;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h80000004;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h80000008;icache_rdreq<=1'b1;	
+		#10	icache_rdaddr<=32'h8000000c;icache_rdreq<=1'b1;	
+		#10	icache_rdreq<=1'b0;
+
+
 		#4000	$finish();
 
 	end
