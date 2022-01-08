@@ -32,7 +32,7 @@ module	myqueue
 	input			queue_push,
 	output			queue_warning,
 	
-
+	input			queue_pop,
 	output	[DATABITS-1:0]	queue_out,
 	output			queue_not_empty,
 	
