@@ -117,6 +117,7 @@ module	hybrid_cache
 	wire	[MAXHITBITS-1:0]	cache_line_hitcnt3;
 	wire	[MAXHITBITS-1:0]	cache_line_hitcnt4;
 	wire	[MAXHITBITS-1:0]	cache_line_hitcnt5;
+	wire	[MAXHITBITS-1:0]	cache_line_hitcnt6;
 	wire	[MAXHITBITS-1:0]	cache_line_hitcnt7;
 
 	reg	[ADDRBITS-1:0]		cache_new_region;
@@ -129,6 +130,7 @@ module	hybrid_cache
 	wire	[ADDRBITS-1:0]		mem_addr3;
 	wire	[ADDRBITS-1:0]		mem_addr4;
 	wire	[ADDRBITS-1:0]		mem_addr5;
+	wire	[ADDRBITS-1:0]		mem_addr6;
 	wire	[ADDRBITS-1:0]		mem_addr7;
 
 	reg	[DATABITS-1:0]		r_mem_in;
@@ -146,12 +148,19 @@ module	hybrid_cache
 	wire	[NUM_CACHELINES-1:0]	int_mem_wrreq;
 	wire	[NUM_CACHELINES-1:0]	int_mem_rdreq;
 
-	reg	[MAXHITSBITS-1:0]	v_candidate_hitcnt;
+	reg	[MAXHITBITS-1:0]	v_candidate_hitcnt;
 	reg	[NUM_CACHELINES-1:0]	v_candidate_fill;
 
 	reg	[NUM_CACHELINES-1:0]	readymask;
 
-	localparam	[1:0]	MSR_NORMAL=2'b00,MSR_REQUEST_SENT=2'b01,MSR_WAIT_FOR_FINISH=2'b10;
+	reg	[DATABITS-1:0]		r_dcache_out;
+	reg				r_dcache_out_valid;
+	reg	[DATABITS-1:0]		r_icache_out;
+	reg				r_icache_out_valid;
+	
+	reg	[2:0]			popmask;
+
+	localparam	[1:0]	MSR_NORMAL=2'b00,MSR_REQUEST_SENT=2'b01,MSR_WAIT_FOR_FINISH=2'b10,MSR_FINISHED=2'b11;
 	reg	[1:0]		msr;
 	
 
@@ -181,7 +190,7 @@ module	hybrid_cache
 		.queue_push		(queue_dcache_wr_push|(queue_dcache_wr_not_empty&dcache_wrreq)),
 		.queue_warning		(queue_dcache_wr_warning),
 		.queue_pop		(queue_dcache_wr_pop),
-		.queue_out		({queue_dcache_wr_addr,queue_dcache_wr_in,queue_dcache_wr_wordlen),
+		.queue_out		({queue_dcache_wr_addr,queue_dcache_wr_in,queue_dcache_wr_wordlen}),
 		.queue_not_empty	(queue_dcache_wr_not_empty),
 		.reset_n		(reset_n),
 		.clk			(clk)
@@ -571,6 +580,14 @@ module	hybrid_cache
 	assign	icache_out		=r_icache_out;
 	assign	icache_out_valid	=r_icache_out_valid;
 
+	always	@(dcache_line_hit,dcache_rdreq ,dcache_wrreq,icache_rdreq)
+	begin
+		// in case a request came, but there was no hit on any cache line: queue it.
+		queue_dcache_rd_push<=(dcache_rdreq & dcache_line_hit=='b0);
+		queue_dcache_wr_push<=(dcache_wrreq & dcache_line_hit=='b0);
+		queue_icache_rd_push<=(icache_rdreq & icache_line_hit=='b0);
+	end
+
 
 	always	@(posedge clk or negedge reset_n)
 	begin
@@ -594,7 +611,6 @@ module	hybrid_cache
 
 			msr				<=MSR_NORMAL;
 			readymask			<='b0;
-			popmask				<='b0;
 
 			r_mem_wrreq			<=1'b0;
 			r_mem_rdreq			<=1'b0;
@@ -605,6 +621,10 @@ module	hybrid_cache
 			r_dcache_out_valid		<='b0;
 			r_icache_out			<='h0;
 			r_icache_out_valid		<='b0;
+			queue_dcache_rd_req		<=1'b0;
+			queue_dcache_wr_req		<=1'b0;
+			queue_icache_rd_req		<=1'b0;
+			popmask				<=3'b000;
 		end else begin
 
 			// multiplex the memory access
@@ -618,7 +638,7 @@ module	hybrid_cache
 				8'b01000000:	begin	r_mem_wrreq<=int_mem_wrreq[6];r_mem_rdreq<=int_mem_rdreq[6];r_mem_addr<=mem_addr6;r_mem_in<=mem_in6;end
 				8'b10000000:	begin	r_mem_wrreq<=int_mem_wrreq[7];r_mem_rdreq<=int_mem_rdreq[7];r_mem_addr<=mem_addr7;r_mem_in<=mem_in7;end
 
-				default:	begin	r_mem_wrreq<=1'b0;r_mem_rdreq<=1'b0;end;
+				default:	begin	r_mem_wrreq<=1'b0;r_mem_rdreq<=1'b0;end
 			endcase
 
 			// multiplex the dcache output
@@ -694,11 +714,6 @@ module	hybrid_cache
 			// cache_line_fill	<=v_candidate_fill;
 
 
-			// in case a request came, but there was no hit on any cache line: queue it.
-			queue_dcache_rd_push<=(dcache_rdreq & dcache_line_hit=='b0);
-			queue_dcache_wr_push<=(dcache_wrreq & dcache_line_hit=='b0);
-			queue_icache_rd_push<=(icache_rdreq & icache_line_hit=='b0);
-
 
 			case (msr)
 				MSR_NORMAL:	begin
@@ -708,12 +723,15 @@ module	hybrid_cache
 							if (queue_dcache_rd_not_empty)
 							begin
 								cache_new_region	<=queue_dcache_rd_addr;
+								popmask			<=3'b001;
 							end else if (queue_dcache_wr_not_empty)
 							begin
 								cache_new_region	<=queue_dcache_wr_addr;
+								popmask			<=3'b010;
 							end else if (queue_icache_rd_not_empty)
 							begin
 								cache_new_region	<=queue_icache_rd_addr;
+								popmask			<=3'b100;
 							end
 							if (queue_dcache_rd_not_empty|queue_dcache_wr_not_empty|queue_icache_rd_not_empty)
 							begin
@@ -734,11 +752,21 @@ module	hybrid_cache
 							cache_line_flush		<='b0;
 							cache_line_fill			<='b0;
 							if ((readymask&cache_line_ready)!='b0) begin	// wait until the cache line has finished the request
-								msr			<=MSR_NORMAL;
-								queue_dcache_rd_pop	<=(queue_dcache_rd_not_empty & dcache_line_hit!='b0);
-								queue_dcache_wr_pop	<=(queue_dcache_wr_not_empty & dcache_line_hit!='b0);
-								queue_icache_rd_pop	<=(queue_icache_rd_not_empty & icache_line_hit!='b0);
+								msr			<=MSR_FINISHED;
+								queue_dcache_rd_req	<=popmask[0];
+								queue_dcache_wr_req	<=popmask[1];
+								queue_icache_rd_req	<=popmask[2];
 							end
+							end
+				MSR_FINISHED:	begin
+							msr			<=MSR_NORMAL;
+							
+							queue_dcache_rd_req	<=1'b0;
+							queue_dcache_wr_req	<=1'b0;
+							queue_icache_rd_req	<=1'b0;
+							queue_dcache_rd_pop	<=(queue_dcache_rd_not_empty & cache_line_hit!='b0);
+							queue_dcache_wr_pop	<=(queue_dcache_wr_not_empty & cache_line_hit!='b0);
+							queue_icache_rd_pop	<=(queue_icache_rd_not_empty & cache_line_hit!='b0);
 						end
 			endcase	
 

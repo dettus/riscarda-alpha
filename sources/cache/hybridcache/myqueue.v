@@ -61,7 +61,7 @@ module	myqueue
 			v_level	=level;
 			if (queue_push)
 			begin
-				queue[inaddr]	<=queue_in;
+				queuemem[inaddr]	<=queue_in;
 				inaddr		<=inaddr+'d1;
 				v_level		=v_level+'d1;
 			end

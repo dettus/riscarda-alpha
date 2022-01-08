@@ -103,7 +103,7 @@ module hybrid_cache_memblock
 	);
 
 
-	dpram	
+	mydpram	
 	#(
 		.DATABITS	(DATABITS/BANKNUM),
 		.ADDRBITS	(LSBBITS-LOGBANKNUM)
@@ -119,7 +119,7 @@ module hybrid_cache_memblock
 	);
 
 
-	dpram	
+	mydpram	
 	#(
 		.DATABITS	(DATABITS/BANKNUM),
 		.ADDRBITS	(LSBBITS-LOGBANKNUM)
@@ -135,7 +135,7 @@ module hybrid_cache_memblock
 	);
 
 
-	dpram	
+	mydpram	
 	#(
 		.DATABITS	(DATABITS/BANKNUM),
 		.ADDRBITS	(LSBBITS-LOGBANKNUM)
