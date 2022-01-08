@@ -222,8 +222,19 @@ module tb_cache
 		#10	icache_rdaddr<=32'h8000000c;icache_rdreq<=1'b1;	
 		#10	icache_rdreq<=1'b0;
 
+		#4000	$display("read test. expecting 00000480...00000100");
+		#10	dcache_rdaddr<=32'h00000480;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000400;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000380;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000300;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000280;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000200;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000180;dcache_rdreq<=1'b1;
+		#10	dcache_rdaddr<=32'h00000100;dcache_rdreq<=1'b1;
+		#10	dcache_rdreq<=1'b0;
 
-		#4000	$finish();
+
+		#8000	$finish();
 
 	end
 endmodule
