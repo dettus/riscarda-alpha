@@ -134,7 +134,7 @@ module	tb_stimuli
 					'd7:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h80000004; r_dcache_rdreq<=1'b1;end
 					'd8:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h80000008; r_dcache_rdreq<=1'b1;end
 					'd9:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h8000000c; r_dcache_rdreq<=1'b1;end
-					'd10:	begin r_waitcnt<='d300000;r_idx<=r_idx+'d1;r_dcache_rdreq<=1'b1;end
+					'd10:	begin r_waitcnt<='d300000;r_idx<=r_idx+'d1;r_dcache_rdreq<=1'b0;end
 
 					'd11:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_icache_rdaddr<=32'h80000000; r_icache_rdreq<=1'b1;end
 					'd12:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_icache_rdaddr<=32'h80000004; r_icache_rdreq<=1'b1;end
