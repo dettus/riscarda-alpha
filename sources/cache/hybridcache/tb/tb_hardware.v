@@ -180,7 +180,50 @@ module	tb_stimuli
 	end
 end
 
-module	hexuart
+module	hexuart_queue
+#(
+	parameter DATABITS=40,
+	parameter QUEUEADDRBITS=4,
+	parameter QUEUESIZE=(2**QUEUEADDRBITS)
+)
+(
+	input	[DATABITS-1:0]	queue_in,
+	input			queue_push,
+	
+	output	[DATABITS-1:0]	queue_out,
+	output			queue_not_empty,
+	input			queue_pop,
+
+	input			reset_n,
+	input			clk
+);
+	reg	[QUEUEADDRBITS-1:0]	inaddr;
+	reg	[QUEUEADDRBITS-1:0]	outaddr;
+	reg	[DATABITS-1:0]		queue_mem[QUEUESIZE-1:0];
+
+	assign	queue_not_empty=(inaddr!=outaddr);
+
+	assign	queue_out=queue_mem[outaddr];
+	always	@(posedge clk or negedge reset_n)
+	begin
+		if (!reset_n)
+		begin
+			inaddr		<='d0;
+			outaddr		<='d0;
+		end else begin
+			if (queue_push) begin
+				queue_mem[inaddr]	<=queue_in;
+				inaddr			<=inaddr+'d1;
+			end
+			if (queue_pop) begin
+				outaddr			<=outaddr+'d1;
+			end
+		end
+	end
+
+endmodule
+
+module	hexuart_serializer
 #(
 	parameter	CLKFREQ=50000000,
 	parameter	BAUDRATE=115200,
@@ -282,6 +325,58 @@ module	hexuart
 	end
 endmodule
 
+module	hexuart(
+	input	[ 7:0]	prefix,
+	input	[31:0]	value,
+	input		newval,
+
+	output		tx,
+
+	input		reset_n,
+	input		clk
+);
+	wire	[ 7:0]	out_prefix;
+	wire	[31:0]	out_value;
+	reg		uart_start;
+	wire		queue_not_empty;
+	wire		serializer_ready;
+
+	hexuart_queue	HEXUART_QUEUE
+	(
+		.queue_in		({prefix,value}),
+		.queue_push		(newval),
+
+		.queue_out		({out_prefix,out_value}),
+		.queue_pop		(uart_start),
+		.queue_not_empty	(queue_not_empty),
+
+		.reset_n		(reset_n),
+		.clk			(clk)
+	);	
+
+	hexuart_serializer	HEXUART_SERIALIZER
+	(
+		.prefix			(out_prefix),
+		.value			(out_value),
+		.start			(uart_start),
+		.tx			(tx),
+		.ready			(serializer_ready),
+		.reset_n		(reset_n),
+		.clk			(clk)
+	);
+
+	always	@(posedge clk or negedge reset_n)
+	begin
+		if (!reset_n)
+		begin
+			uart_start	<=1'b0;
+		end else begin
+			uart_start	<=!uart_start & queue_not_empty & serializer_ready;
+		end
+	end
+endmodule
+
+
 module toplevel
 #(
 	parameter	ADDRBITS=32,
@@ -323,7 +418,8 @@ module toplevel
 	wire				mem_out_valid;		//
 	wire				mem_wrreq;		//
 	wire				mem_rdreq;		//
-	
+
+
 
 
 	tb_stimuli	TB_STIMULI0
@@ -383,5 +479,37 @@ module toplevel
 		.clk				(clk)
 	);
 
+	hexuart		HEXUART(
+		.prefix		(icache_out_valid?8'h69:8'h64),	// 'i' or 'd'
+		.value		(icache_out_valid?icache_out:dcache_out),
+		.newval		(icache_out_valid|dcache_out_valid),
+		.tx		(tx),
+		.reset_n	(reset_n),
+		.clk		(clk)
+	);	
+
 	
+endmodule
+
+module tb();
+	wire	tx;
+	reg	reset_n;
+	reg	clk;
+
+	toplevel	TOPLEVEL(
+		.tx		(tx),
+		.reset_n	(reset_n),
+		.clk		(clk)
+	);	
+
+	always	#5	clk<=!clk;
+	
+	initial begin
+		#0	reset_n<=1'b1;clk<=1'b0;
+		#1	reset_n<=1'b0;
+		#1	reset_n<=1'b1;
+		#8	$display("go");
+
+		#10000000 $finish();
+	end
 endmodule
