@@ -65,29 +65,29 @@ module	tb_stimuli
 	parameter	WORDLENBITS=2
 )
 (
-	output		[ADDRBITS-1:0]	dcache_rdaddr,
-	output				dcache_rdreq,
-	output		[ADDRBITS-1:0]	dcache_wraddr,
-	output				dcache_wrreq,
-	output		[DATABITS-1:0]	dcache_in,
-	output				dcache_in_wordlen,
-	output		[ADDRBITS-1:0]	icache_rdaddr,
-	output				icache_rdreq,
+	output		[ADDRBITS-1:0]		dcache_rdaddr,
+	output					dcache_rdreq,
+	output		[ADDRBITS-1:0]		dcache_wraddr,
+	output					dcache_wrreq,
+	output		[DATABITS-1:0]		dcache_in,
+	output		[WORDLENBITS-1:0]	dcache_in_wordlen,
+	output		[ADDRBITS-1:0]		icache_rdaddr,
+	output					icache_rdreq,
 
-	input				reset_n,
-	input				clk
+	input					reset_n,
+	input					clk
 );
 
-	reg		[ADDRBITS-1:0]	r_dcache_rdaddr;
-	reg				r_dcache_rdreq;
-	reg		[ADDRBITS-1:0]	r_dcache_wraddr;
-	reg				r_dcache_wrreq;
-	reg		[DATABITS-1:0]	r_dcache_in;
-	reg				r_dcache_in_wordlen;
-	reg		[ADDRBITS-1:0]	r_icache_rdaddr;
-	reg				r_icache_rdreq;	
-	reg		[24:0]		r_waitcnt;
-	reg		[15:0]		r_idx;
+	reg		[ADDRBITS-1:0]		r_dcache_rdaddr;
+	reg					r_dcache_rdreq;
+	reg		[ADDRBITS-1:0]		r_dcache_wraddr;
+	reg					r_dcache_wrreq;
+	reg		[DATABITS-1:0]		r_dcache_in;
+	reg		[WORDLENBITS-1:0]	r_dcache_in_wordlen;
+	reg		[ADDRBITS-1:0]		r_icache_rdaddr;
+	reg					r_icache_rdreq;	
+	reg		[24:0]			r_waitcnt;
+	reg		[15:0]			r_idx;
 
 
 	assign	dcache_rdaddr		=r_dcache_rdaddr;
@@ -166,7 +166,7 @@ module	tb_stimuli
 					'd31:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h00000380; r_dcache_rdreq<=1'b1;end
 					'd32:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h00000400; r_dcache_rdreq<=1'b1;end
 					'd33:	begin r_waitcnt<='d0;r_idx<=r_idx+'d1;	r_dcache_rdaddr<=32'h00000480; r_dcache_rdreq<=1'b1;end
-					'd34:	begin r_waitcnt<='d300000;r_idx<=r_idx+'d1; r_dcache_rdreq<=1'b0;
+					'd34:	begin r_waitcnt<='d300000;r_idx<=r_idx+'d1; r_dcache_rdreq<=1'b0;end
 					
 					default:begin
 							r_waitcnt<='d0;
@@ -178,7 +178,7 @@ module	tb_stimuli
 			end
 		end
 	end
-end
+endmodule
 
 module	hexuart_queue
 #(
@@ -247,6 +247,9 @@ module	hexuart_serializer
 	reg	[31:0]	r_value;
 	reg	[15:0]	r_samplecnt;
 
+	assign	tx	=r_tx;
+	assign	ready	=r_ready;
+
 	always	@(posedge clk or negedge reset_n)
 	begin
 		if (!reset_n)
@@ -254,10 +257,10 @@ module	hexuart_serializer
 			r_tx		<=1'b1;
 			r_ready		<=1'b1;
 			r_bytecnt	<='d0;
-			r_shift		<='b0000000000;
+			r_shift		<=10'b0000000001;
 			r_samplecnt	<='d0;
 		end else begin
-			if (r_shift==10'b0000000000 & r_samplecnt=='d0)
+			if (r_shift==10'b0000000001 & r_samplecnt=='d0)
 			begin
 				r_tx	<=1'b1;
 				case (r_bytecnt)
@@ -437,7 +440,7 @@ module toplevel
 		.clk			(clk)
 	);
 
-	hyrid_cache	HYBRID_CACHE0(
+	hybrid_cache	HYBRID_CACHE0(
 		.dcache_rdaddr		(dcache_rdaddr),
 		.dcache_rdreq		(dcache_rdreq),
 		.dcache_out		(dcache_out),
@@ -505,6 +508,8 @@ module tb();
 	always	#5	clk<=!clk;
 	
 	initial begin
+		$dumpfile("tb_hardware.vcd");
+		$dumpvars(0);
 		#0	reset_n<=1'b1;clk<=1'b0;
 		#1	reset_n<=1'b0;
 		#1	reset_n<=1'b1;
